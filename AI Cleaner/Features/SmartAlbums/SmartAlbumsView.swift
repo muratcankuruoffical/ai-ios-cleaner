@@ -365,9 +365,16 @@ struct PhotoThumbnailView: View {
 
 struct LargeVideosListView: View {
     let videos: [VideoAnalyzer.VideoInfo]
+    @State private var deletedVideoIds: Set<String> = []
+    @State private var showingDeleteAlert = false
+    @State private var videoToDelete: VideoAnalyzer.VideoInfo?
+
+    var availableVideos: [VideoAnalyzer.VideoInfo] {
+        videos.filter { !deletedVideoIds.contains($0.asset.localIdentifier) }
+    }
 
     var body: some View {
-        List(videos, id: \.asset.localIdentifier) { video in
+        List(availableVideos, id: \.asset.localIdentifier) { video in
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: "video.fill")
@@ -382,6 +389,16 @@ struct LargeVideosListView: View {
                     }
 
                     Spacer()
+
+                    // Delete button
+                    Button(action: {
+                        videoToDelete = video
+                        showingDeleteAlert = true
+                    }) {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.borderless)
                 }
 
                 Text("\(Int(video.resolution.width))×\(Int(video.resolution.height)) @ \(String(format: "%.0f", video.frameRate))fps")
@@ -391,6 +408,43 @@ struct LargeVideosListView: View {
             .padding(.vertical, 4)
         }
         .navigationTitle("Large Videos")
+        .alert("Delete Video", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                if let video = videoToDelete {
+                    deleteVideo(video)
+                }
+            }
+        } message: {
+            if let video = videoToDelete {
+                Text("Delete this large video? (\(VideoAnalyzer.shared.formatFileSize(video.fileSize)))")
+            }
+        }
+        .overlay {
+            if availableVideos.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.green)
+                    Text("All large videos deleted!")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+
+    private func deleteVideo(_ video: VideoAnalyzer.VideoInfo) {
+        Task {
+            do {
+                try await PhotoLibraryService.shared.delete(assets: [video.asset])
+                await MainActor.run {
+                    deletedVideoIds.insert(video.asset.localIdentifier)
+                }
+            } catch {
+                print("❌ Failed to delete video: \(error)")
+            }
+        }
     }
 }
 
@@ -452,9 +506,17 @@ struct SimilarVideoGroupRow: View {
 
 struct VideoGroupDetailView: View {
     let group: VideoAnalyzer.SimilarVideoGroup
+    @Environment(\.dismiss) var dismiss
+    @State private var deletedVideoIds: Set<String> = []
+    @State private var showingDeleteAlert = false
+    @State private var videoToDelete: VideoAnalyzer.VideoInfo?
+
+    var availableVideos: [VideoAnalyzer.VideoInfo] {
+        group.videos.filter { !deletedVideoIds.contains($0.asset.localIdentifier) }
+    }
 
     var body: some View {
-        List(group.videos, id: \.asset.localIdentifier) { video in
+        List(availableVideos, id: \.asset.localIdentifier) { video in
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: "video.fill")
@@ -472,7 +534,8 @@ struct VideoGroupDetailView: View {
 
                     // Delete button
                     Button(action: {
-                        // TODO: Implement deletion
+                        videoToDelete = video
+                        showingDeleteAlert = true
                     }) {
                         Image(systemName: "trash")
                             .foregroundColor(.red)
@@ -496,8 +559,56 @@ struct VideoGroupDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Done") {
-                    // Dismiss
+                    dismiss()
                 }
+            }
+        }
+        .alert("Delete Video", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                if let video = videoToDelete {
+                    deleteVideo(video)
+                }
+            }
+        } message: {
+            if let video = videoToDelete {
+                Text("Are you sure you want to delete this video? (\(VideoAnalyzer.shared.formatFileSize(video.fileSize)))")
+            }
+        }
+        .overlay {
+            if availableVideos.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.green)
+                    Text("All videos deleted!")
+                        .font(.headline)
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+
+    private func deleteVideo(_ video: VideoAnalyzer.VideoInfo) {
+        Task {
+            do {
+                try await PhotoLibraryService.shared.delete(assets: [video.asset])
+                await MainActor.run {
+                    deletedVideoIds.insert(video.asset.localIdentifier)
+
+                    // Auto dismiss if all videos are deleted
+                    if availableVideos.isEmpty {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            dismiss()
+                        }
+                    }
+                }
+            } catch {
+                print("❌ Failed to delete video: \(error)")
+                // TODO: Show error alert
             }
         }
     }
