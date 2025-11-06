@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 // import FirebaseAnalytics // Uncomment when adding Firebase via SPM
 // import FirebaseCrashlytics
 

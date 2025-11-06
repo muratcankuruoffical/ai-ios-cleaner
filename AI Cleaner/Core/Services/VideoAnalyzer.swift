@@ -8,6 +8,7 @@
 import Foundation
 import Photos
 import AVFoundation
+import UIKit
 
 final class VideoAnalyzer {
     static let shared = VideoAnalyzer()

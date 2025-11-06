@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 @main
 struct AI_CleanerApp: App {
@@ -43,8 +44,6 @@ struct AI_CleanerApp: App {
 
 @MainActor
 class AppState: ObservableObject {
-    var objectWillChange: ObservableObjectPublisher
-    
     @Published var isOnboardingComplete: Bool
     @Published var hasPhotoLibraryAccess: Bool = false
 
