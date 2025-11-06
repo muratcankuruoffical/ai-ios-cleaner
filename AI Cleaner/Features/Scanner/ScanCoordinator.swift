@@ -326,15 +326,34 @@ class ScanCoordinator: ObservableObject {
         // Load image for analysis
         let image = try await photoService.loadAnalysisImage(for: asset)
 
-        // Extract feature vector
-        let featurePrint = try await visionService.extractFeaturePrint(from: image)
-        let vector = FeatureVector(from: featurePrint)
+        // Extract feature vector with fallback
+        let vector: FeatureVector
+        do {
+            let featurePrint = try await visionService.extractFeaturePrint(from: image)
+            vector = FeatureVector(from: featurePrint)
+        } catch {
+            // FALLBACK: Use simple perceptual hash when Vision fails
+            print("⚠️ Vision failed for asset \(asset.localIdentifier), using fallback hash")
+            vector = try generateFallbackHash(from: image)
+        }
 
-        // Detect blur
-        let (blurScore, _) = try await blurDetector.detectBlur(in: image)
+        // Detect blur (with fallback)
+        let blurScore: Float
+        do {
+            let (score, _) = try await blurDetector.detectBlur(in: image)
+            blurScore = score
+        } catch {
+            blurScore = 100.0 // Assume acceptable quality if detection fails
+        }
 
-        // Detect darkness
-        let brightnessResult = try await darknessDetector.analyzeBrightness(in: image)
+        // Detect darkness (with fallback)
+        let brightnessScore: Float
+        do {
+            let brightnessResult = try await darknessDetector.analyzeBrightness(in: image)
+            brightnessScore = brightnessResult.brightnessScore
+        } catch {
+            brightnessScore = 0.5 // Assume medium brightness if detection fails
+        }
 
         // Detect screenshot
         let screenshotResult = await screenshotDetector.detectScreenshot(asset: asset)
@@ -344,7 +363,7 @@ class ScanCoordinator: ObservableObject {
 
         let metadata = SimilarityService.AssetMetadata(
             blurScore: blurScore,
-            brightnessScore: brightnessResult.brightnessScore,
+            brightnessScore: brightnessScore,
             isScreenshot: screenshotResult.isScreenshot,
             fileSize: fileSize
         )
@@ -354,6 +373,54 @@ class ScanCoordinator: ObservableObject {
             vector: vector,
             metadata: metadata
         )
+    }
+
+    // MARK: - Fallback Hash Generation
+
+    private func generateFallbackHash(from image: UIImage) throws -> FeatureVector {
+        // Generate a simple perceptual hash as fallback when Vision fails
+        // This is less accurate but works without Neural Engine
+
+        guard let cgImage = image.cgImage else {
+            throw VisionError.invalidImage
+        }
+
+        // Resize to 8x8 for perceptual hash
+        let size = CGSize(width: 8, height: 8)
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue)
+
+        guard let context = CGContext(
+            data: nil,
+            width: 8,
+            height: 8,
+            bitsPerComponent: 8,
+            bytesPerRow: 8,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo.rawValue
+        ) else {
+            throw VisionError.featureExtractionFailed
+        }
+
+        context.interpolationQuality = .high
+        context.draw(cgImage, in: CGRect(origin: .zero, size: size))
+
+        guard let data = context.data else {
+            throw VisionError.featureExtractionFailed
+        }
+
+        // Extract 64 bytes (8x8 grayscale pixels)
+        let bytes = data.assumingMemoryBound(to: UInt8.self)
+        var hashData = Data(count: 64)
+        for i in 0..<64 {
+            hashData[i] = bytes[i]
+        }
+
+        // Convert to float array for compatibility
+        let floatArray = hashData.map { Float($0) / 255.0 }
+        let vectorData = FeatureVector.fromFloatArray(floatArray)
+
+        return FeatureVector(data: vectorData, elementCount: 64)
     }
 
     // MARK: - Caching
