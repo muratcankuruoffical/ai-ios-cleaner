@@ -10,7 +10,7 @@ internal import Combine
 // import FirebaseAnalytics // Uncomment when adding Firebase via SPM
 // import FirebaseCrashlytics
 
-final class AnalyticsManager {
+final class AnalyticsManager: ObservableObject {
     static let shared = AnalyticsManager()
 
     @Published var isAnalyticsEnabled: Bool = true {
