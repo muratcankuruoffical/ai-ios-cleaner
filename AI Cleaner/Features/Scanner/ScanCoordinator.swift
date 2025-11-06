@@ -314,8 +314,8 @@ class ScanCoordinator: ObservableObject {
         let largeVideos = await videoAnalyzer.findLargeVideos(
             assets: videoAssetArray,
             thresholdMB: 200,
-            progressHandler: { current, total in
-                updateProgress(step: "Finding large videos...", current: current, total: total)
+            progressHandler: { [self] current, total in
+                self.updateProgress(step: "Finding large videos...", current: current, total: total)
             }
         )
 
@@ -327,8 +327,8 @@ class ScanCoordinator: ObservableObject {
         let similarVideoGroups = await videoAnalyzer.findSimilarVideos(
             assets: videoAssetArray,
             durationThreshold: 2.0,
-            progressHandler: { current, total in
-                updateProgress(step: "Finding similar videos...", current: current, total: total)
+            progressHandler: { [self] current, total in
+                self.updateProgress(step: "Finding similar videos...", current: current, total: total)
             }
         )
 
@@ -341,8 +341,8 @@ class ScanCoordinator: ObservableObject {
         let optimizablePhotos = await photoOptimizer.findOptimizablePhotos(
             assets: imageAssetArray,
             configuration: .preset1080p,
-            progressHandler: { current, total in
-                updateProgress(step: "Finding optimizable photos...", current: current, total: total)
+            progressHandler: { [self] current, total in
+                self.updateProgress(step: "Finding optimizable photos...", current: current, total: total)
             }
         )
 
