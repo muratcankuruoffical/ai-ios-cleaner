@@ -108,14 +108,27 @@ final class SimilarityService {
 
         // Compare all pairs and union similar ones
         let count = assets.count
+        print("🔍 Similarity Analysis (threshold: \(configuration.similarityThreshold)):")
+        var matchCount = 0
+
         for i in 0..<count {
             for j in (i + 1)..<count {
                 let distance = configuration.useCosineSimilarity
                     ? FeatureVector.cosineDistance(assets[i].vector, assets[j].vector)
                     : FeatureVector.distance(assets[i].vector, assets[j].vector)
 
-                if distance < configuration.similarityThreshold {
+                let isSimilar = distance < configuration.similarityThreshold
+                if isSimilar {
                     union(i, j)
+                    matchCount += 1
+                }
+
+                // Log first few comparisons for debugging
+                if count <= 10 && (isSimilar || j - i == 1) {
+                    let asset1ID = assets[i].asset.localIdentifier.prefix(8)
+                    let asset2ID = assets[j].asset.localIdentifier.prefix(8)
+                    let symbol = isSimilar ? "✅" : "❌"
+                    print("   \(symbol) [\(i)] vs [\(j)]: distance = \(String(format: "%.4f", distance))")
                 }
             }
 
@@ -124,6 +137,8 @@ final class SimilarityService {
                 await Task.yield()
             }
         }
+
+        print("   Total similar pairs found: \(matchCount)")
 
         // Group assets by their root parent
         var groups: [Int: [Int]] = [:]

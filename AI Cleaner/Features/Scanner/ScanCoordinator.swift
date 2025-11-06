@@ -329,6 +329,7 @@ class ScanCoordinator: ObservableObject {
 
         // Extract feature vector with fallback
         let vector: FeatureVector
+        var usingFallback = false
         do {
             let featurePrint = try await visionService.extractFeaturePrint(from: image)
             vector = FeatureVector(from: featurePrint)
@@ -336,6 +337,7 @@ class ScanCoordinator: ObservableObject {
             // FALLBACK: Use simple perceptual hash when Vision fails
             print("⚠️ Vision failed for asset \(asset.localIdentifier), using fallback hash")
             vector = try generateFallbackHash(from: image)
+            usingFallback = true
         }
 
         // Detect blur (with fallback)
@@ -343,7 +345,8 @@ class ScanCoordinator: ObservableObject {
         do {
             let (score, _) = try await blurDetector.detectBlur(in: image)
             blurScore = score
-        } catch {
+        } catch let error {
+            print("⚠️ Blur detection failed: \(error.localizedDescription)")
             blurScore = 100.0 // Assume acceptable quality if detection fails
         }
 
@@ -352,7 +355,8 @@ class ScanCoordinator: ObservableObject {
         do {
             let brightnessResult = try await darknessDetector.analyzeBrightness(in: image)
             brightnessScore = brightnessResult.brightnessScore
-        } catch {
+        } catch let error {
+            print("⚠️ Brightness detection failed: \(error.localizedDescription)")
             brightnessScore = 0.5 // Assume medium brightness if detection fails
         }
 
@@ -368,6 +372,11 @@ class ScanCoordinator: ObservableObject {
             isScreenshot: screenshotResult.isScreenshot,
             fileSize: fileSize
         )
+
+        // DEBUG: Log analysis results for this asset
+        print("   📷 Asset \(asset.localIdentifier.prefix(8)):")
+        print("      Blur: \(String(format: "%.1f", blurScore)) | Brightness: \(String(format: "%.2f", brightnessScore)) | Screenshot: \(screenshotResult.isScreenshot) | Size: \(fileSize/1024)KB")
+        print("      Using fallback hash: \(usingFallback)")
 
         return SimilarityService.AssetWithVector(
             asset: asset,
