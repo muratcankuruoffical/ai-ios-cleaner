@@ -23,7 +23,19 @@ final class VisionService {
         }
 
         return try await withCheckedThrowingContinuation { continuation in
+            var isResumed = false
+            let lock = NSLock()
+
             let request = VNGenerateImageFeaturePrintRequest { request, error in
+                lock.lock()
+                defer { lock.unlock() }
+
+                guard !isResumed else {
+                    // Continuation already resumed, ignore duplicate callback
+                    return
+                }
+                isResumed = true
+
                 if let error = error {
                     continuation.resume(throwing: error)
                     return
@@ -42,6 +54,14 @@ final class VisionService {
             do {
                 try handler.perform([request])
             } catch {
+                lock.lock()
+                defer { lock.unlock() }
+
+                guard !isResumed else {
+                    // Continuation already resumed in completion handler
+                    return
+                }
+                isResumed = true
                 continuation.resume(throwing: error)
             }
         }
