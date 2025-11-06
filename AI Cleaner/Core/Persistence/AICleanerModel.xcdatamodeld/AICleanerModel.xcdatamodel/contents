@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21754" systemVersion="22F82" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
-    <entity name="AssetFingerprint" representedClassName="AssetFingerprint" syncable="YES" codeGenerationType="category">
+    <entity name="AssetFingerprint" representedClassName="AssetFingerprint" syncable="YES" codeGenerationType="manual">
         <attribute name="assetLocalId" attributeType="String"/>
         <attribute name="blurScore" optional="YES" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="brightnessScore" optional="YES" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>
@@ -15,7 +15,7 @@
             </uniquenessConstraint>
         </uniquenessConstraints>
     </entity>
-    <entity name="ScanSession" representedClassName="ScanSession" syncable="YES" codeGenerationType="category">
+    <entity name="ScanSession" representedClassName="ScanSession" syncable="YES" codeGenerationType="manual">
         <attribute name="deletedCount" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="finishedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="freedBytes" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
