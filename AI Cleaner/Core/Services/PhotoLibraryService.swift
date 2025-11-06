@@ -115,14 +115,27 @@ final class PhotoLibraryService {
             return 0
         }
 
+        // Use PHAssetResourceManager to get accurate file size
         return await withCheckedContinuation { continuation in
-            var size: Int64 = 0
+            let manager = PHAssetResourceManager.default()
 
-            if let unsignedSize = resource.value(forKey: "fileSize") as? CLong {
-                size = Int64(unsignedSize)
-            }
+            // Request data to measure size
+            var dataSize: Int64 = 0
+            let options = PHAssetResourceRequestOptions()
+            options.isNetworkAccessAllowed = false // Only local, fast
 
-            continuation.resume(returning: size)
+            manager.requestData(for: resource, options: options, dataReceivedHandler: { data in
+                dataSize += Int64(data.count)
+            }, completionHandler: { error in
+                if error != nil {
+                    // Fallback: estimate from pixel dimensions
+                    let pixelSize = Int64(asset.pixelWidth * asset.pixelHeight)
+                    let estimatedSize = pixelSize * 3 / 2 // Rough JPEG estimate
+                    continuation.resume(returning: estimatedSize)
+                } else {
+                    continuation.resume(returning: dataSize)
+                }
+            })
         }
     }
 
