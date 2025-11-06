@@ -260,6 +260,7 @@ struct SimplePhotoListView: View {
 struct PhotoThumbnailView: View {
     let asset: PHAsset
     @State private var image: UIImage?
+    @State private var isLoading = true
 
     var body: some View {
         Group {
@@ -267,9 +268,24 @@ struct PhotoThumbnailView: View {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
+            } else if isLoading {
+                // Skeleton loading state with shimmer
+                ZStack {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+
+                    ProgressView()
+                        .tint(.gray)
+                }
             } else {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
+                // Failed to load
+                ZStack {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.1))
+
+                    Image(systemName: "photo")
+                        .foregroundColor(.gray)
+                }
             }
         }
         .frame(width: 100, height: 100)
@@ -284,9 +300,13 @@ struct PhotoThumbnailView: View {
             let thumbnail = try await PhotoLibraryService.shared.loadThumbnail(for: asset)
             await MainActor.run {
                 image = thumbnail
+                isLoading = false
             }
         } catch {
             print("Failed to load thumbnail: \(error)")
+            await MainActor.run {
+                isLoading = false
+            }
         }
     }
 }
