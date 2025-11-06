@@ -275,10 +275,19 @@ class ScanCoordinator: ObservableObject {
         // Step 4: Filter by quality
         updateProgress(step: "Detecting quality issues...", current: 0, total: 100)
 
+        // DEBUG: Log blur score distribution
+        print("\n🔍 BLUR SCORE DISTRIBUTION:")
+        let sortedByBlur = assetsWithVectors.sorted { $0.metadata.blurScore < $1.metadata.blurScore }
+        print("   Lowest blur score: \(sortedByBlur.first?.metadata.blurScore ?? 0)")
+        print("   Highest blur score: \(sortedByBlur.last?.metadata.blurScore ?? 0)")
+        print("   Median: \(sortedByBlur[sortedByBlur.count/2].metadata.blurScore)")
+
+        // REVERSED LOGIC: Higher score = more blur (unexpected but observed in data!)
+        // User's data shows: blur photos have scores 9000+, sharp photos ~300-7000
         let blurryPhotos = assetsWithVectors
-            .filter { $0.metadata.blurScore < 100.0 }
+            .filter { $0.metadata.blurScore > 5000.0 }  // REVERSED! High = blur
             .map { ($0.asset, $0.metadata.blurScore) }
-            .sorted { $0.1 < $1.1 }
+            .sorted { $0.1 > $1.1 }  // Sort descending (highest blur first)
 
         let darkPhotos = assetsWithVectors
             .filter { $0.metadata.brightnessScore < 0.3 }
