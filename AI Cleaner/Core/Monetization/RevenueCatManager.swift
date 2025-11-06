@@ -17,25 +17,16 @@ final class RevenueCatManager: ObservableObject {
     @Published var isProUser: Bool = false
     @Published var currentOffering: Offering?
     @Published var customerInfo: CustomerInfo?
+    @Published var isConfigured: Bool = false
 
     // MARK: - Configuration
 
-    private var apiKey: String {
+    private var apiKey: String? {
         // Read API key from Info.plist (populated from Config.xcconfig)
         guard let key = Bundle.main.object(forInfoDictionaryKey: "REVENUECAT_API_KEY") as? String,
               !key.isEmpty,
               !key.contains("YOUR_REVENUECAT") else {
-            fatalError("""
-                RevenueCat API key not configured.
-
-                Setup steps:
-                1. Copy Config.example.xcconfig to Config.xcconfig
-                2. Add your RevenueCat API key to Config.xcconfig
-                3. In Xcode: Project > Info > Configurations > Set Config.xcconfig for Debug & Release
-                4. Add REVENUECAT_API_KEY to Info.plist as $(REVENUECAT_API_KEY)
-
-                See README.md for detailed instructions.
-                """)
+            return nil
         }
         return key
     }
@@ -53,6 +44,23 @@ final class RevenueCatManager: ObservableObject {
     // MARK: - Setup
 
     func configure() {
+        guard let apiKey = apiKey else {
+            print("""
+                ⚠️ RevenueCat API key not configured - running in free mode.
+
+                To enable subscriptions:
+                1. Copy Config.example.xcconfig to Config.xcconfig
+                2. Add your RevenueCat API key to Config.xcconfig
+                3. In Xcode: Project > Info > Configurations > Set Config.xcconfig for Debug & Release
+                4. Add REVENUECAT_API_KEY to Info.plist as $(REVENUECAT_API_KEY)
+
+                See README.md for detailed instructions.
+                """)
+            isConfigured = false
+            isProUser = false // Free mode
+            return
+        }
+
         Purchases.logLevel = .debug
         Purchases.configure(withAPIKey: apiKey)
 
@@ -60,6 +68,8 @@ final class RevenueCatManager: ObservableObject {
         Purchases.shared.attribution.setAttributes([
             "app_version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
         ])
+
+        isConfigured = true
 
         // Check initial subscription status
         Task {
@@ -70,6 +80,11 @@ final class RevenueCatManager: ObservableObject {
     // MARK: - Subscription Status
 
     func checkSubscriptionStatus() async {
+        guard isConfigured else {
+            // RevenueCat not configured, stay in free mode
+            return
+        }
+
         do {
             let customerInfo = try await Purchases.shared.customerInfo()
             await MainActor.run {
@@ -84,6 +99,10 @@ final class RevenueCatManager: ObservableObject {
     // MARK: - Offerings
 
     func loadOfferings() async throws -> Offering? {
+        guard isConfigured else {
+            throw RevenueCatError.notConfigured
+        }
+
         let offerings = try await Purchases.shared.offerings()
         let offering = offerings.current
 
@@ -97,6 +116,10 @@ final class RevenueCatManager: ObservableObject {
     // MARK: - Purchase
 
     func purchase(package: Package) async throws -> CustomerInfo {
+        guard isConfigured else {
+            throw RevenueCatError.notConfigured
+        }
+
         let result = try await Purchases.shared.purchase(package: package)
 
         await MainActor.run {
@@ -137,6 +160,10 @@ final class RevenueCatManager: ObservableObject {
     // MARK: - Restore
 
     func restorePurchases() async throws {
+        guard isConfigured else {
+            throw RevenueCatError.notConfigured
+        }
+
         let customerInfo = try await Purchases.shared.restorePurchases()
 
         await MainActor.run {
@@ -148,6 +175,10 @@ final class RevenueCatManager: ObservableObject {
     // MARK: - User Management
 
     func login(userId: String) async throws {
+        guard isConfigured else {
+            throw RevenueCatError.notConfigured
+        }
+
         let (customerInfo, _) = try await Purchases.shared.logIn(userId)
 
         await MainActor.run {
@@ -157,6 +188,10 @@ final class RevenueCatManager: ObservableObject {
     }
 
     func logout() async throws {
+        guard isConfigured else {
+            throw RevenueCatError.notConfigured
+        }
+
         let customerInfo = try await Purchases.shared.logOut()
 
         await MainActor.run {
@@ -214,7 +249,7 @@ enum RevenueCatError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notConfigured:
-            return "RevenueCat is not configured. Please add the SDK via SPM."
+            return "Subscriptions are not available. RevenueCat API key is not configured."
         case .packageNotAvailable:
             return "The requested package is not available"
         case .purchaseFailed:
