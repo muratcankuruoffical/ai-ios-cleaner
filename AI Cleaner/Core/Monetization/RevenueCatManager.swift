@@ -7,6 +7,7 @@
 
 import Foundation
 import RevenueCat
+internal import Combine
 
 final class RevenueCatManager: ObservableObject {
     static let shared = RevenueCatManager()
@@ -198,7 +199,7 @@ final class RevenueCatManager: ObservableObject {
         let savings = yearlyCostOfMonthly - annualPrice
         let savingsPercentage = (savings / yearlyCostOfMonthly) * 100
 
-        return String(format: "%.0f%%", savingsPercentage)
+        return String(format: "%.0f%%", savingsPercentage as CVarArg)
     }
 }
 

@@ -6,106 +6,136 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		52B0FBDA2EBD13E4002A4810 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 52B0FBD92EBD13E4002A4810 /* RevenueCat */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
-		524F7B492EBD058400B5AA46 /* AI Cleaner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AI Cleaner.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		52A373E42EBD0AFE004426B0 /* AI Cleaner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AI Cleaner.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5260E2F22EBD111F00F9E0EA /* Exceptions for "AI Cleaner" folder in "AI Cleaner" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Resources/Info.plist,
+			);
+			target = 52A373E32EBD0AFD004426B0 /* AI Cleaner */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		524F7B4B2EBD058400B5AA46 /* AI Cleaner */ = {
+		52A373E62EBD0AFE004426B0 /* AI Cleaner */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5260E2F22EBD111F00F9E0EA /* Exceptions for "AI Cleaner" folder in "AI Cleaner" target */,
+			);
 			path = "AI Cleaner";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		524F7B462EBD058400B5AA46 /* Frameworks */ = {
+		52A373E12EBD0AFD004426B0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				52B0FBDA2EBD13E4002A4810 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		524F7B402EBD058400B5AA46 = {
+		52A373DB2EBD0AFD004426B0 = {
 			isa = PBXGroup;
 			children = (
-				524F7B4B2EBD058400B5AA46 /* AI Cleaner */,
-				524F7B4A2EBD058400B5AA46 /* Products */,
+				52A373E62EBD0AFE004426B0 /* AI Cleaner */,
+				52B0FBD82EBD13E4002A4810 /* Frameworks */,
+				52A373E52EBD0AFE004426B0 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		524F7B4A2EBD058400B5AA46 /* Products */ = {
+		52A373E52EBD0AFE004426B0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				524F7B492EBD058400B5AA46 /* AI Cleaner.app */,
+				52A373E42EBD0AFE004426B0 /* AI Cleaner.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		52B0FBD82EBD13E4002A4810 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		524F7B482EBD058400B5AA46 /* AI Cleaner */ = {
+		52A373E32EBD0AFD004426B0 /* AI Cleaner */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 524F7B592EBD058500B5AA46 /* Build configuration list for PBXNativeTarget "AI Cleaner" */;
+			buildConfigurationList = 52A373F42EBD0AFE004426B0 /* Build configuration list for PBXNativeTarget "AI Cleaner" */;
 			buildPhases = (
-				524F7B452EBD058400B5AA46 /* Sources */,
-				524F7B462EBD058400B5AA46 /* Frameworks */,
-				524F7B472EBD058400B5AA46 /* Resources */,
+				52A373E02EBD0AFD004426B0 /* Sources */,
+				52A373E12EBD0AFD004426B0 /* Frameworks */,
+				52A373E22EBD0AFD004426B0 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				524F7B4B2EBD058400B5AA46 /* AI Cleaner */,
+				52A373E62EBD0AFE004426B0 /* AI Cleaner */,
 			);
 			name = "AI Cleaner";
 			packageProductDependencies = (
+				52B0FBD92EBD13E4002A4810 /* RevenueCat */,
 			);
 			productName = "AI Cleaner";
-			productReference = 524F7B492EBD058400B5AA46 /* AI Cleaner.app */;
+			productReference = 52A373E42EBD0AFE004426B0 /* AI Cleaner.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		524F7B412EBD058400B5AA46 /* Project object */ = {
+		52A373DC2EBD0AFD004426B0 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
-					524F7B482EBD058400B5AA46 = {
+					52A373E32EBD0AFD004426B0 = {
 						CreatedOnToolsVersion = 26.0.1;
 					};
 				};
 			};
-			buildConfigurationList = 524F7B442EBD058400B5AA46 /* Build configuration list for PBXProject "AI Cleaner" */;
+			buildConfigurationList = 52A373DF2EBD0AFD004426B0 /* Build configuration list for PBXProject "AI Cleaner" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 524F7B402EBD058400B5AA46;
+			mainGroup = 52A373DB2EBD0AFD004426B0;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5260E33E2EBD129300F9E0EA /* XCRemoteSwiftPackageReference "purchases-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 524F7B4A2EBD058400B5AA46 /* Products */;
+			productRefGroup = 52A373E52EBD0AFE004426B0 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				524F7B482EBD058400B5AA46 /* AI Cleaner */,
+				52A373E32EBD0AFD004426B0 /* AI Cleaner */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		524F7B472EBD058400B5AA46 /* Resources */ = {
+		52A373E22EBD0AFD004426B0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -115,7 +145,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		524F7B452EBD058400B5AA46 /* Sources */ = {
+		52A373E02EBD0AFD004426B0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -125,7 +155,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		524F7B572EBD058500B5AA46 /* Debug */ = {
+		52A373F22EBD0AFE004426B0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -188,7 +218,7 @@
 			};
 			name = Debug;
 		};
-		524F7B582EBD058500B5AA46 /* Release */ = {
+		52A373F32EBD0AFE004426B0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -244,7 +274,7 @@
 			};
 			name = Release;
 		};
-		524F7B5A2EBD058500B5AA46 /* Debug */ = {
+		52A373F52EBD0AFE004426B0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -253,6 +283,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_FILE[sdk=*]" = "$(PROJECT_DIR)/AI Cleaner/Resources/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -275,7 +306,7 @@
 			};
 			name = Debug;
 		};
-		524F7B5B2EBD058500B5AA46 /* Release */ = {
+		52A373F62EBD0AFE004426B0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -284,6 +315,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_FILE[sdk=*]" = "$(PROJECT_DIR)/AI Cleaner/Resources/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -309,25 +341,44 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		524F7B442EBD058400B5AA46 /* Build configuration list for PBXProject "AI Cleaner" */ = {
+		52A373DF2EBD0AFD004426B0 /* Build configuration list for PBXProject "AI Cleaner" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				524F7B572EBD058500B5AA46 /* Debug */,
-				524F7B582EBD058500B5AA46 /* Release */,
+				52A373F22EBD0AFE004426B0 /* Debug */,
+				52A373F32EBD0AFE004426B0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		524F7B592EBD058500B5AA46 /* Build configuration list for PBXNativeTarget "AI Cleaner" */ = {
+		52A373F42EBD0AFE004426B0 /* Build configuration list for PBXNativeTarget "AI Cleaner" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				524F7B5A2EBD058500B5AA46 /* Debug */,
-				524F7B5B2EBD058500B5AA46 /* Release */,
+				52A373F52EBD0AFE004426B0 /* Debug */,
+				52A373F62EBD0AFE004426B0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5260E33E2EBD129300F9E0EA /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.46.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		52B0FBD92EBD13E4002A4810 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5260E33E2EBD129300F9E0EA /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = 524F7B412EBD058400B5AA46 /* Project object */;
+	rootObject = 52A373DC2EBD0AFD004426B0 /* Project object */;
 }
