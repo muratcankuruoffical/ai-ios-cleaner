@@ -230,14 +230,29 @@ class ScanCoordinator: ObservableObject {
             ])
         }
 
+        // DEBUG: Log analysis results
+        print("📊 SCAN DEBUG:")
+        print("   Total photos: \(totalPhotos)")
+        print("   Successfully analyzed: \(assetsWithVectors.count)")
+        print("   Failed: \(failedCount)")
+        if !failedAssets.isEmpty {
+            print("   First failure: \(failedAssets.first!.1.localizedDescription)")
+        }
+
         try Task.checkCancellation()
 
         // Step 3: Find similar groups
         updateProgress(step: "Finding duplicates...", current: 0, total: 100)
         let similarGroups = await similarityService.findSimilarGroups(
             assets: assetsWithVectors,
-            configuration: .default
+            configuration: .relaxed  // Use relaxed threshold for better detection
         )
+
+        // DEBUG: Log similarity results
+        print("   Similar groups found: \(similarGroups.count)")
+        if !similarGroups.isEmpty {
+            print("   Largest group size: \(similarGroups.first!.assets.count)")
+        }
 
         try Task.checkCancellation()
 
