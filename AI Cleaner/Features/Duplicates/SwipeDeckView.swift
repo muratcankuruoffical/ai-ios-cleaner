@@ -219,7 +219,8 @@ struct SwipeCardView: View {
     @State private var rotation: Double = 0
     @State private var image: UIImage?
 
-    private let swipeThreshold: CGFloat = 120
+    private let swipeThreshold: CGFloat = 80 // Lowered from 120 for better responsiveness
+    private let velocityThreshold: CGFloat = 1000 // Fast swipe detection
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -335,33 +336,48 @@ struct SwipeCardView: View {
 
     private func handleDragEnd(_ gesture: DragGesture.Value) {
         let horizontalDistance = gesture.translation.width
+        let predictedEnd = gesture.predictedEndTranslation.width
 
-        if horizontalDistance < -swipeThreshold {
+        // Calculate velocity from predicted end position
+        let velocity = abs(predictedEnd - horizontalDistance)
+
+        // Determine if swipe should trigger based on distance OR velocity
+        let shouldTriggerLeft = horizontalDistance < -swipeThreshold ||
+                                (horizontalDistance < -40 && velocity > velocityThreshold)
+        let shouldTriggerRight = horizontalDistance > swipeThreshold ||
+                                 (horizontalDistance > 40 && velocity > velocityThreshold)
+
+        if shouldTriggerLeft {
             // Swipe left = Keep
-            animateSwipe(direction: .left)
+            animateSwipe(direction: .left, velocity: velocity)
             onSwipe(.left)
-        } else if horizontalDistance > swipeThreshold {
+        } else if shouldTriggerRight {
             // Swipe right = Delete
-            animateSwipe(direction: .right)
+            animateSwipe(direction: .right, velocity: velocity)
             onSwipe(.right)
         } else {
-            // Return to center
-            offset = .zero
-            rotation = 0
+            // Return to center with bounce
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                offset = .zero
+                rotation = 0
+            }
         }
     }
 
-    private func animateSwipe(direction: SwipeDirection) {
+    private func animateSwipe(direction: SwipeDirection, velocity: CGFloat) {
         let distance: CGFloat = 500
-        withAnimation(.easeOut(duration: 0.3)) {
+
+        // Spring animation with overshoot for natural physics
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.7, blendDuration: 0.1)) {
             offset = direction == .left
                 ? CGSize(width: -distance, height: 0)
                 : CGSize(width: distance, height: 0)
             rotation = direction == .left ? -30 : 30
         }
 
-        // Haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        // Haptic feedback - vary intensity based on swipe velocity
+        let isFastSwipe = velocity > velocityThreshold
+        let impactFeedback = UIImpactFeedbackGenerator(style: isFastSwipe ? .heavy : .medium)
         impactFeedback.impactOccurred()
     }
 
