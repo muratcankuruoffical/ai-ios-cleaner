@@ -97,7 +97,7 @@ final class VisionService {
                 let featurePrint = try await extractFeaturePrint(from: image)
                 results.append(featurePrint)
             } catch {
-                print("Failed to extract feature print for image \(index): \(error)")
+                // Append nil for failed extraction
                 results.append(nil)
             }
 
@@ -124,10 +124,19 @@ struct FeatureVector {
         self.elementCount = observation.elementCount
     }
 
+    init(data: Data, elementCount: Int) {
+        self.data = data
+        self.elementCount = elementCount
+    }
+
     func toFloatArray() -> [Float] {
-        let count = data.count / MemoryLayout<Float>.size
-        var array = [Float](repeating: 0, count: count)
-        _ = array.withUnsafeMutableBytes { data.copyBytes(to: $0) }
+        // Use stored elementCount, not derived from data size
+        // This is critical because elementCount varies by iOS version
+        var array = [Float](repeating: 0, count: elementCount)
+        let bytesToCopy = min(data.count, elementCount * MemoryLayout<Float>.size)
+        _ = array.withUnsafeMutableBytes { buffer in
+            data.prefix(bytesToCopy).copyBytes(to: buffer)
+        }
         return array
     }
 

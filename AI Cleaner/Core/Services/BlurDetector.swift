@@ -97,13 +97,26 @@ final class BlurDetector {
 
         // Create source buffer
         var sourceBuffer = vImage_Buffer()
-        vImageBuffer_InitWithCGImage(
+        let initResult = vImageBuffer_InitWithCGImage(
             &sourceBuffer,
             &vImage_CGImageFormat(cgImage: cgImage),
             nil,
             cgImage,
             vImage_Flags(kvImageNoFlags)
         )
+
+        // Ensure cleanup happens even if errors occur
+        defer {
+            if sourceBuffer.data != nil {
+                sourceBuffer.data.deallocate()
+            }
+        }
+
+        // Check if initialization succeeded
+        guard initResult == kvImageNoError else {
+            // Return empty buffer if initialization failed
+            return vImage_Buffer()
+        }
 
         // Create destination buffer
         var destBuffer = vImage_Buffer()
@@ -123,7 +136,7 @@ final class BlurDetector {
         ]
 
         // Apply convolution
-        vImageConvolve_Planar8(
+        let convResult = vImageConvolve_Planar8(
             &sourceBuffer,
             &destBuffer,
             nil,
@@ -137,13 +150,28 @@ final class BlurDetector {
             vImage_Flags(kvImageEdgeExtend)
         )
 
-        // Clean up source buffer
-        sourceBuffer.data.deallocate()
+        // If convolution failed, clean up destBuffer and return empty
+        guard convResult == kvImageNoError else {
+            destBuffer.data.deallocate()
+            return vImage_Buffer()
+        }
 
         return destBuffer
     }
 
     private func calculateVariance(of buffer: vImage_Buffer) -> Float {
+        // Ensure cleanup happens even if errors occur
+        defer {
+            if buffer.data != nil {
+                buffer.data.deallocate()
+            }
+        }
+
+        // Check if buffer is valid
+        guard buffer.data != nil, buffer.width > 0, buffer.height > 0 else {
+            return 0.0
+        }
+
         let count = Int(buffer.width * buffer.height)
         let data = buffer.data.assumingMemoryBound(to: UInt8.self)
 
@@ -159,9 +187,6 @@ final class BlurDetector {
         let mean = Float(sum) / Float(count)
         let meanSquared = Float(sumSquared) / Float(count)
         let variance = meanSquared - (mean * mean)
-
-        // Clean up buffer
-        buffer.data.deallocate()
 
         return variance
     }
@@ -260,7 +285,7 @@ final class BlurDetector {
                 let result = try await detectBlur(in: image)
                 results.append(result)
             } catch {
-                print("Failed to analyze image \(index): \(error)")
+                // Append default blurry result on failure
                 results.append((0, .veryBlurry))
             }
 

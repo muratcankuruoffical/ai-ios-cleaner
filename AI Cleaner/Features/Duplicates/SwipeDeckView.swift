@@ -390,7 +390,7 @@ struct SwipeCardView: View {
                 image = loadedImage
             }
         } catch {
-            print("Failed to load image: \(error)")
+            // Silently fail - UI shows placeholder
         }
     }
 

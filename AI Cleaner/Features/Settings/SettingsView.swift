@@ -151,7 +151,7 @@ struct SettingsView: View {
             try context.execute(deleteRequest)
             try context.save()
         } catch {
-            print("Failed to clear cache: \(error)")
+            // Cache clear failed - continue anyway
         }
     }
 

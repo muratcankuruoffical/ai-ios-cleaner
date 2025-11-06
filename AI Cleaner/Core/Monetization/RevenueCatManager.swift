@@ -76,7 +76,7 @@ final class RevenueCatManager: ObservableObject {
                 self.isProUser = customerInfo.entitlements[EntitlementKeys.pro]?.isActive == true
             }
         } catch {
-            print("Failed to fetch customer info: \(error)")
+            // Error will be handled by caller if needed
         }
     }
 

@@ -254,7 +254,6 @@ final class DarknessDetector {
                 let result = try await analyzeBrightness(in: image)
                 results.append(result)
             } catch {
-                print("Failed to analyze image \(index): \(error)")
                 // Return default dark result on failure
                 results.append(AnalysisResult(
                     brightnessScore: 0,

@@ -161,6 +161,8 @@ class ScanCoordinator: ObservableObject {
         updateProgress(step: "Analyzing photos...", current: 0, total: totalPhotos)
 
         var assetsWithVectors: [SimilarityService.AssetWithVector] = []
+        var failedCount = 0
+        var failedAssets: [(PHAsset, Error)] = []
 
         for i in 0..<totalPhotos {
             let asset = imageAssets.object(at: i)
@@ -169,16 +171,32 @@ class ScanCoordinator: ObservableObject {
             if let cached = fetchCachedAnalysis(for: asset) {
                 assetsWithVectors.append(cached)
             } else {
-                // Analyze image
-                let analyzed = try await analyzeImage(asset: asset)
-                assetsWithVectors.append(analyzed)
+                // Analyze image with error recovery
+                do {
+                    let analyzed = try await analyzeImage(asset: asset)
+                    assetsWithVectors.append(analyzed)
 
-                // Cache result
-                cacheAnalysis(analyzed)
+                    // Cache result
+                    cacheAnalysis(analyzed)
+                } catch {
+                    // Log error but continue with next image
+                    failedCount += 1
+                    failedAssets.append((asset, error))
+                    AnalyticsManager.shared.logNonFatalError(
+                        message: "Failed to analyze image",
+                        context: [
+                            "asset_id": asset.localIdentifier,
+                            "error": error.localizedDescription,
+                            "index": i
+                        ]
+                    )
+
+                    // Continue processing other images
+                }
             }
 
             updateProgress(
-                step: "Analyzing photos...",
+                step: "Analyzing photos... (\(failedCount) failed)",
                 current: i + 1,
                 total: totalPhotos
             )
@@ -188,6 +206,15 @@ class ScanCoordinator: ObservableObject {
                 try Task.checkCancellation()
                 await Task.yield()
             }
+        }
+
+        // Log summary of failures
+        if failedCount > 0 {
+            AnalyticsManager.shared.logEvent("scan_partial_failure", parameters: [
+                "failed_count": failedCount,
+                "total_count": totalPhotos,
+                "success_rate": Double(totalPhotos - failedCount) / Double(totalPhotos)
+            ])
         }
 
         try Task.checkCancellation()
@@ -314,7 +341,14 @@ class ScanCoordinator: ObservableObject {
             return nil
         }
 
-        let vector = FeatureVector(data: vectorData, elementCount: 128)
+        // Use actual stored elementCount, not hardcoded value
+        let elementCount = Int(cached.vectorElementCount)
+        guard elementCount > 0 else {
+            // Invalid cache entry, return nil to force re-analysis
+            return nil
+        }
+
+        let vector = FeatureVector(data: vectorData, elementCount: elementCount)
 
         let metadata = SimilarityService.AssetMetadata(
             blurScore: cached.blurScore,
@@ -338,6 +372,7 @@ class ScanCoordinator: ObservableObject {
             fingerprint.id = UUID()
             fingerprint.assetLocalId = result.asset.localIdentifier
             fingerprint.vectorData = result.vector.data
+            fingerprint.vectorElementCount = Int32(result.vector.elementCount) // Store actual count!
             fingerprint.blurScore = result.metadata.blurScore
             fingerprint.brightnessScore = result.metadata.brightnessScore
             fingerprint.isScreenshot = result.metadata.isScreenshot

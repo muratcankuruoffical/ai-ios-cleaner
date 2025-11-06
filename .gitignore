@@ -92,6 +92,9 @@ iOSInjectionProject/
 # Firebase
 GoogleService-Info.plist
 
+# Configuration (contains API keys)
+Config.xcconfig
+
 # Environment
 .env
 .env.local

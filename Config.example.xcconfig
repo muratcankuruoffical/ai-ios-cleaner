@@ -1,0 +1,12 @@
+//
+//  Config.example.xcconfig
+//  AI Cleaner
+//
+//  Example configuration file - Copy to Config.xcconfig and fill in your values
+//
+
+// RevenueCat API Key
+// Get this from https://app.revenuecat.com/
+REVENUECAT_API_KEY = your_revenuecat_public_sdk_key_here
+
+// Add other secrets here

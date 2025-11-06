@@ -54,5 +54,7 @@
 	<string>Düzenlenen görselleri kaydetmek için izne ihtiyacımız olabilir.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>REVENUECAT_API_KEY</key>
+	<string>$(REVENUECAT_API_KEY)</string>
 </dict>
 </plist>

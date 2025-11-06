@@ -303,7 +303,6 @@ struct PhotoThumbnailView: View {
                 isLoading = false
             }
         } catch {
-            print("Failed to load thumbnail: \(error)")
             await MainActor.run {
                 isLoading = false
             }

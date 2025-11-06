@@ -56,8 +56,6 @@ final class AnalyticsManager {
         /*
         Analytics.logEvent(name, parameters: parameters)
         */
-
-        print("📊 Analytics Event: \(name)", parameters ?? [:])
     }
 
     // MARK: - Screen Tracking
@@ -271,8 +269,6 @@ final class AnalyticsManager {
         /*
         Analytics.setUserProperty(value, forName: name)
         */
-
-        print("👤 User Property: \(name) = \(value ?? "nil")")
     }
 
     func setUserId(_ userId: String?) {

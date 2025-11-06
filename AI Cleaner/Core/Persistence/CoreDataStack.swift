@@ -42,7 +42,7 @@ final class CoreDataStack {
         do {
             try ctx.save()
         } catch {
-            print("Error saving context: \(error)")
+            // Save failed - data loss possible
         }
     }
 }

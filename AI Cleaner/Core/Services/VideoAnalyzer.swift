@@ -99,7 +99,7 @@ final class VideoAnalyzer {
                     largeVideos.append(info)
                 }
             } catch {
-                print("Failed to analyze video: \(error)")
+                // Skip failed videos
             }
 
             progressHandler?(index + 1, assets.count)
@@ -140,7 +140,7 @@ final class VideoAnalyzer {
                 let info = try await analyzeVideo(asset: asset)
                 videoInfos.append(info)
             } catch {
-                print("Failed to analyze video: \(error)")
+                // Skip failed videos
             }
 
             progressHandler?(index + 1, assets.count)
