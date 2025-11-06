@@ -385,14 +385,34 @@ class ScanCoordinator: ObservableObject {
 
         // Calculate total potential savings
         var totalSavings = statistics.potentialSavingsBytes
+        print("\n💾 POTENTIAL SAVINGS CALCULATION:")
+        print("   📸 Duplicate Photos: \(formatBytes(statistics.potentialSavingsBytes))")
 
-        // Add video savings
+        // Add large video savings
+        var largeVideoSavings: Int64 = 0
         for video in largeVideos {
-            totalSavings += video.fileSize
+            largeVideoSavings += video.fileSize
         }
+        totalSavings += largeVideoSavings
+        print("   🎬 Large Videos: \(formatBytes(largeVideoSavings)) (\(largeVideos.count) videos)")
+
+        // Add similar video savings (keep smallest, delete duplicates)
+        var similarVideoSavings: Int64 = 0
+        for group in similarVideoGroups {
+            // Sort by size and calculate savings (all except the smallest)
+            let sortedVideos = group.videos.sorted { $0.fileSize < $1.fileSize }
+            let savingsFromGroup = sortedVideos.dropFirst().reduce(Int64(0)) { $0 + $1.fileSize }
+            similarVideoSavings += savingsFromGroup
+        }
+        totalSavings += similarVideoSavings
+        print("   🎥 Similar Videos: \(formatBytes(similarVideoSavings)) (\(similarVideoGroups.count) groups)")
 
         // Add optimization savings
-        totalSavings += photoOptimizer.calculateTotalSavings(photos: optimizablePhotos)
+        let optimizationSavings = photoOptimizer.calculateTotalSavings(photos: optimizablePhotos)
+        totalSavings += optimizationSavings
+        print("   📉 Optimizable Photos: \(formatBytes(optimizationSavings)) (\(optimizablePhotos.count) photos)")
+
+        print("   ✨ TOTAL POTENTIAL SAVINGS: \(formatBytes(totalSavings))")
 
         let duration = Date().timeIntervalSince(startTime)
 
@@ -587,6 +607,15 @@ class ScanCoordinator: ObservableObject {
         progress.currentItemIndex = current
         progress.totalItems = total
         progress.percentage = total > 0 ? Double(current) / Double(total) : 0
+    }
+
+    // MARK: - Helper Methods
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        formatter.allowedUnits = [.useKB, .useMB, .useGB]
+        return formatter.string(fromByteCount: bytes)
     }
 
     // MARK: - Session Management
