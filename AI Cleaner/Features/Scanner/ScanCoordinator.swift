@@ -8,6 +8,7 @@
 import Foundation
 import Photos
 import CoreData
+import UIKit
 internal import Combine
 
 @MainActor
