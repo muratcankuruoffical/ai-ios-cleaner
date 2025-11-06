@@ -36,6 +36,9 @@ struct DashboardView: View {
 
                     // Recent Activity
                     recentActivityView
+
+                    // System Health (Battery + Storage)
+                    systemHealthView
                 }
                 .padding()
             }
@@ -258,6 +261,13 @@ struct DashboardView: View {
                     value: "\(results.optimizablePhotos.count)",
                     color: .cyan
                 )
+
+                StatCard(
+                    icon: "doc.text",
+                    title: "Documents",
+                    value: "\(results.documents.count)",
+                    color: .indigo
+                )
             }
         }
     }
@@ -287,6 +297,105 @@ struct DashboardView: View {
             .padding()
             .background(Color.gray.opacity(0.1))
             .cornerRadius(12)
+        }
+    }
+
+    // MARK: - System Health
+
+    private var systemHealthView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("System Health")
+                .font(.headline)
+
+            let health = SystemInsights.shared.calculateSystemHealth()
+            let battery = SystemInsights.shared.getBatteryInfo()
+            let storage = SystemInsights.shared.getStorageInfo()
+
+            // Overall Health Score
+            HStack(spacing: 16) {
+                Image(systemName: health.statusIcon)
+                    .font(.largeTitle)
+                    .foregroundColor(colorForStatus(health.statusColor))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Overall Score: \(health.grade)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Text("\(health.overallScore)% Health")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding()
+            .background(colorForStatus(health.statusColor).opacity(0.1))
+            .cornerRadius(12)
+
+            // Battery & Storage Grid
+            HStack(spacing: 16) {
+                // Battery
+                VStack(spacing: 12) {
+                    Image(systemName: battery.statusIcon)
+                        .font(.title)
+                        .foregroundColor(colorForStatus(battery.statusColor))
+
+                    VStack(spacing: 4) {
+                        Text("\(battery.percentage)%")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                        Text("Battery")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if battery.isLowPowerModeEnabled {
+                        Text("Low Power Mode")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(colorForStatus(battery.statusColor).opacity(0.1))
+                .cornerRadius(12)
+
+                // Storage
+                if let storage = storage {
+                    VStack(spacing: 12) {
+                        Image(systemName: storage.statusIcon)
+                            .font(.title)
+                            .foregroundColor(colorForStatus(storage.statusColor))
+
+                        VStack(spacing: 4) {
+                            Text(storage.formatBytes(storage.freeSpace))
+                                .font(.title3)
+                                .fontWeight(.bold)
+                            Text("Available")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text("\(Int(storage.usagePercentage))% Used")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(colorForStatus(storage.statusColor).opacity(0.1))
+                    .cornerRadius(12)
+                }
+            }
+        }
+    }
+
+    private func colorForStatus(_ status: String) -> Color {
+        switch status {
+        case "green": return .green
+        case "orange": return .orange
+        case "red": return .red
+        case "blue": return .blue
+        default: return .gray
         }
     }
 }

@@ -98,6 +98,18 @@ struct SmartAlbumsView: View {
                         selectedAlbum = .optimizable
                     }
                 }
+
+                if !scanResults.documents.isEmpty {
+                    AlbumRow(
+                        type: .documents,
+                        count: scanResults.documents.count,
+                        icon: "doc.text",
+                        color: .indigo
+                    )
+                    .onTapGesture {
+                        selectedAlbum = .documents
+                    }
+                }
             }
         }
         .navigationTitle("Smart Albums")
@@ -134,6 +146,8 @@ struct SmartAlbumsView: View {
             SimilarVideosListView(groups: scanResults.similarVideoGroups)
         case .optimizable:
             PhotoOptimizationView(photos: scanResults.optimizablePhotos)
+        case .documents:
+            DocumentsListView(documents: scanResults.documents)
         }
     }
 }
@@ -148,6 +162,7 @@ enum AlbumType: Identifiable {
     case largeVideos
     case similarVideos
     case optimizable
+    case documents
 
     var id: String {
         switch self {
@@ -158,6 +173,7 @@ enum AlbumType: Identifiable {
         case .largeVideos: return "largeVideos"
         case .similarVideos: return "similarVideos"
         case .optimizable: return "optimizable"
+        case .documents: return "documents"
         }
     }
 
@@ -170,6 +186,7 @@ enum AlbumType: Identifiable {
         case .largeVideos: return "Large Videos"
         case .similarVideos: return "Similar Videos"
         case .optimizable: return "Optimizable Photos"
+        case .documents: return "Documents & IDs"
         }
     }
 }
@@ -770,6 +787,242 @@ extension PhotoOptimizer.OptimizablePhoto: Identifiable {
 
 extension SimilarityService.SimilarityGroup: Identifiable {}
 
+// MARK: - Documents List View
+
+struct DocumentsListView: View {
+    let documents: [DocumentDetector.DocumentDetectionResult]
+    @State private var selectedType: DocumentDetector.DocumentType?
+
+    var groupedDocuments: [DocumentDetector.DocumentType: [DocumentDetector.DocumentDetectionResult]] {
+        DocumentDetector.shared.groupByType(documents)
+    }
+
+    var sensitiveCount: Int {
+        DocumentDetector.shared.countSensitiveDocuments(documents)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Warning header for sensitive documents
+            if sensitiveCount > 0 {
+                VStack(spacing: 8) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.shield.fill")
+                            .font(.title2)
+                            .foregroundColor(.orange)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Sensitive Documents Detected")
+                                .font(.headline)
+                            Text("\(sensitiveCount) document(s) contain sensitive information")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color.orange.opacity(0.1))
+
+                    Text("Consider moving these to a secure folder or deleting them")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+                }
+            }
+
+            // Document types list
+            List {
+                ForEach(Array(groupedDocuments.keys.sorted { $0.rawValue < $1.rawValue }), id: \.self) { type in
+                    let docs = groupedDocuments[type]!
+
+                    DocumentTypeRow(
+                        documentType: type,
+                        count: docs.count,
+                        isSensitive: type.isSensitive
+                    )
+                    .onTapGesture {
+                        selectedType = type
+                    }
+                }
+            }
+        }
+        .navigationTitle("Documents & IDs")
+        .sheet(item: $selectedType) { type in
+            NavigationView {
+                DocumentTypeDetailView(
+                    documentType: type,
+                    documents: groupedDocuments[type] ?? []
+                )
+            }
+        }
+    }
+}
+
+struct DocumentTypeRow: View {
+    let documentType: DocumentDetector.DocumentType
+    let count: Int
+    let isSensitive: Bool
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(isSensitive ? Color.orange.opacity(0.2) : Color.indigo.opacity(0.2))
+                    .frame(width: 50, height: 50)
+
+                Image(systemName: documentType.icon)
+                    .font(.title3)
+                    .foregroundColor(isSensitive ? .orange : .indigo)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(documentType.rawValue)
+                        .font(.headline)
+
+                    if isSensitive {
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+
+                Text("\(count) document\(count == 1 ? "" : "s")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+struct DocumentTypeDetailView: View {
+    let documentType: DocumentDetector.DocumentType
+    let documents: [DocumentDetector.DocumentDetectionResult]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            if documentType.isSensitive {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.largeTitle)
+                        .foregroundColor(.orange)
+
+                    Text("Sensitive Information")
+                        .font(.headline)
+
+                    Text("These documents may contain personal or financial information. Handle with care.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+            }
+
+            // Documents grid
+            ScrollView {
+                LazyVGrid(columns: [
+                    GridItem(.adaptive(minimum: 150))
+                ], spacing: 16) {
+                    ForEach(documents, id: \.asset.localIdentifier) { doc in
+                        DocumentCard(document: doc)
+                    }
+                }
+                .padding()
+            }
+        }
+        .navigationTitle(documentType.rawValue)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Done") {
+                    // Dismiss
+                }
+            }
+        }
+    }
+}
+
+struct DocumentCard: View {
+    let document: DocumentDetector.DocumentDetectionResult
+    @State private var thumbnail: UIImage?
+
+    var body: some View {
+        VStack(spacing: 8) {
+            // Thumbnail
+            Group {
+                if let thumbnail = thumbnail {
+                    Image(uiImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    ZStack {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                        ProgressView()
+                    }
+                }
+            }
+            .frame(height: 120)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            // Info
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    Image(systemName: document.documentType.icon)
+                        .font(.caption)
+                    Text(document.documentType.rawValue)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(.indigo)
+
+                Text("\(Int(document.confidence * 100))% confident")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+
+                if document.isSensitive {
+                    HStack(spacing: 4) {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                        Text("Sensitive")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.orange)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .task {
+            await loadThumbnail()
+        }
+    }
+
+    private func loadThumbnail() async {
+        do {
+            let image = try await PhotoLibraryService.shared.loadThumbnail(for: document.asset)
+            await MainActor.run {
+                thumbnail = image
+            }
+        } catch {
+            // Failed to load
+        }
+    }
+}
+
+// MARK: - Make DocumentType Identifiable
+
+extension DocumentDetector.DocumentType: Identifiable {
+    public var id: String { rawValue }
+}
+
 // MARK: - Preview
 
 #Preview {
@@ -787,6 +1040,7 @@ extension SimilarityService.SimilarityGroup: Identifiable {}
                 largeVideos: [],
                 similarVideoGroups: [],
                 optimizablePhotos: [],
+                documents: [],
                 potentialSavingsBytes: 2_500_000_000,
                 statistics: CleanupStatistics(
                     totalGroups: 25,

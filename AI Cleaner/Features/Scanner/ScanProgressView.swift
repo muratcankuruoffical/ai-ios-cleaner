@@ -268,6 +268,7 @@ struct CategoryCard: View {
             largeVideos: [],
             similarVideoGroups: [],
             optimizablePhotos: [],
+            documents: [],
             potentialSavingsBytes: 2_500_000_000,
             statistics: CleanupStatistics(
                 totalGroups: 25,

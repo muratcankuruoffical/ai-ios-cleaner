@@ -29,6 +29,7 @@ class ScanCoordinator: ObservableObject {
     private let screenshotDetector = ScreenshotDetector.shared
     private let videoAnalyzer = VideoAnalyzer.shared
     private let photoOptimizer = PhotoOptimizer.shared
+    private let documentDetector = DocumentDetector.shared
 
     // MARK: - State
 
@@ -83,6 +84,7 @@ class ScanCoordinator: ObservableObject {
         let largeVideos: [VideoAnalyzer.VideoInfo]
         let similarVideoGroups: [VideoAnalyzer.SimilarVideoGroup]
         let optimizablePhotos: [PhotoOptimizer.OptimizablePhoto]
+        let documents: [DocumentDetector.DocumentDetectionResult]
 
         // Statistics
         let potentialSavingsBytes: Int64
@@ -355,6 +357,27 @@ class ScanCoordinator: ObservableObject {
 
         try Task.checkCancellation()
 
+        // Step 5d: Detect documents (ID cards, invoices, etc.)
+        updateProgress(step: "Detecting documents...", current: 0, total: totalPhotos)
+
+        let documents = await documentDetector.detectDocuments(
+            in: imageAssetArray,
+            progressHandler: { [self] current, total in
+                self.updateProgress(step: "Detecting documents...", current: current, total: total)
+            }
+        )
+
+        // DEBUG: Log document detection results
+        print("\n📄 DOCUMENT DETECTION:")
+        print("   Found \(documents.count) documents")
+        let sensitiveCount = documentDetector.countSensitiveDocuments(documents)
+        print("   Sensitive documents: \(sensitiveCount)")
+        if let firstDoc = documents.first {
+            print("   Top match: \(firstDoc.documentType.rawValue) (confidence: \(String(format: "%.2f", firstDoc.confidence)))")
+        }
+
+        try Task.checkCancellation()
+
         // Step 6: Calculate statistics
         updateProgress(step: "Calculating savings...", current: 99, total: 100)
 
@@ -385,6 +408,7 @@ class ScanCoordinator: ObservableObject {
             largeVideos: largeVideos,
             similarVideoGroups: similarVideoGroups,
             optimizablePhotos: optimizablePhotos,
+            documents: documents,
             potentialSavingsBytes: totalSavings,
             statistics: statistics
         )
