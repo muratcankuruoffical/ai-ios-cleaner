@@ -97,9 +97,10 @@ final class BlurDetector {
 
         // Create source buffer
         var sourceBuffer = vImage_Buffer()
+        var format = vImage_CGImageFormat(cgImage: cgImage)
         let initResult = vImageBuffer_InitWithCGImage(
             &sourceBuffer,
-            &vImage_CGImageFormat(cgImage: cgImage),
+            &format,
             nil,
             cgImage,
             vImage_Flags(kvImageNoFlags)
@@ -120,8 +121,8 @@ final class BlurDetector {
 
         // Create destination buffer
         var destBuffer = vImage_Buffer()
-        destBuffer.width = vUInt(width)
-        destBuffer.height = vUInt(height)
+        destBuffer.width = vImagePixelCount(width)
+        destBuffer.height = vImagePixelCount(height)
         destBuffer.rowBytes = width
         destBuffer.data = UnsafeMutableRawPointer.allocate(
             byteCount: width * height,
