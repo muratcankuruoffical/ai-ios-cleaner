@@ -312,21 +312,59 @@ struct DashboardView: View {
             let storage = SystemInsights.shared.getStorageInfo()
 
             // Overall Health Score
-            HStack(spacing: 16) {
-                Image(systemName: health.statusIcon)
-                    .font(.largeTitle)
-                    .foregroundColor(colorForStatus(health.statusColor))
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 16) {
+                    Image(systemName: health.statusIcon)
+                        .font(.largeTitle)
+                        .foregroundColor(colorForStatus(health.statusColor))
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Overall Score: \(health.grade)")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Text("\(health.overallScore)% Health")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text("Grade: \(health.grade)")
+                                .font(.title)
+                                .fontWeight(.bold)
+                            Text(gradeDescription(health.grade))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Text("\(health.overallScore)% Overall Health")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
                 }
 
-                Spacer()
+                // Breakdown
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "battery.100")
+                            .font(.caption)
+                        Text("Battery: \(health.batteryHealth)%")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.secondary)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "internaldrive")
+                            .font(.caption)
+                        Text("Storage: \(health.storageHealth)%")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.secondary)
+                }
+
+                // Recommendation
+                if let recommendation = healthRecommendation(health) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        Text(recommendation)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             .padding()
             .background(colorForStatus(health.statusColor).opacity(0.1))
@@ -396,6 +434,31 @@ struct DashboardView: View {
         case "red": return .red
         case "blue": return .blue
         default: return .gray
+        }
+    }
+
+    private func gradeDescription(_ grade: String) -> String {
+        switch grade {
+        case "A": return "Excellent"
+        case "B": return "Good"
+        case "C": return "Fair"
+        case "D": return "Poor"
+        case "F": return "Needs Attention"
+        default: return ""
+        }
+    }
+
+    private func healthRecommendation(_ health: SystemInsights.SystemHealthScore) -> String? {
+        if health.storageHealth < 30 {
+            return "Storage is almost full. Delete unnecessary files to improve performance."
+        } else if health.batteryHealth < 20 {
+            return "Battery is low. Charge your device."
+        } else if health.overallScore >= 80 {
+            return nil // No recommendation needed for good health
+        } else if health.overallScore >= 60 {
+            return "Consider freeing up some storage space."
+        } else {
+            return "Your device needs attention. Use AI Cleaner to free up space!"
         }
     }
 }
