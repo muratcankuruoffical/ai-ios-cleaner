@@ -8,7 +8,7 @@
 import Foundation
 import Photos
 import CoreData
-import Combine
+internal import Combine
 
 @MainActor
 class ScanCoordinator: ObservableObject {

@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import Combine
+internal import Combine
 
 struct AppRouter: View {
     @ObservedObject var appState: AppState

@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import Combine
+internal import Combine
 
 @main
 struct AI_CleanerApp: App {

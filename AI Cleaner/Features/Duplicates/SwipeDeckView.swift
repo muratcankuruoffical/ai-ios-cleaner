@@ -7,7 +7,7 @@
 
 import SwiftUI
 import Photos
-import Combine
+internal import Combine
 
 struct SwipeDeckView: View {
     @StateObject private var viewModel: SwipeDeckViewModel
