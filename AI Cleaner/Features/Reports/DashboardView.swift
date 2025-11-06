@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Charts
+import Combine
 
 struct DashboardView: View {
     @StateObject private var scanCoordinator = ScanCoordinator()
