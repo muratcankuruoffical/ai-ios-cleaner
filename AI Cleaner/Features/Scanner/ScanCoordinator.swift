@@ -35,12 +35,24 @@ class ScanCoordinator: ObservableObject {
 
     // MARK: - Scan State
 
-    enum ScanState {
+    enum ScanState: Equatable {
         case idle
         case scanning
         case completed
         case cancelled
         case error(Error)
+
+        static func == (lhs: ScanState, rhs: ScanState) -> Bool {
+            switch (lhs, rhs) {
+            case (.idle, .idle): return true
+            case (.scanning, .scanning): return true
+            case (.completed, .completed): return true
+            case (.cancelled, .cancelled): return true
+            case (.error(let lhsError), .error(let rhsError)):
+                return lhsError.localizedDescription == rhsError.localizedDescription
+            default: return false
+            }
+        }
     }
 
     // MARK: - Scan Progress
