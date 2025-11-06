@@ -28,6 +28,7 @@ class ScanCoordinator: ObservableObject {
     private let darknessDetector = DarknessDetector.shared
     private let screenshotDetector = ScreenshotDetector.shared
     private let videoAnalyzer = VideoAnalyzer.shared
+    private let photoOptimizer = PhotoOptimizer.shared
 
     // MARK: - State
 
@@ -80,6 +81,8 @@ class ScanCoordinator: ObservableObject {
         let darkPhotos: [(asset: PHAsset, score: Float)]
         let screenshots: [PHAsset]
         let largeVideos: [VideoAnalyzer.VideoInfo]
+        let similarVideoGroups: [VideoAnalyzer.SimilarVideoGroup]
+        let optimizablePhotos: [PhotoOptimizer.OptimizablePhoto]
 
         // Statistics
         let potentialSavingsBytes: Int64
@@ -310,8 +313,45 @@ class ScanCoordinator: ObservableObject {
 
         let largeVideos = await videoAnalyzer.findLargeVideos(
             assets: videoAssetArray,
-            thresholdMB: 200
+            thresholdMB: 200,
+            progressHandler: { current, total in
+                updateProgress(step: "Finding large videos...", current: current, total: total)
+            }
         )
+
+        try Task.checkCancellation()
+
+        // Step 5b: Find similar videos
+        updateProgress(step: "Finding similar videos...", current: 0, total: totalVideos)
+
+        let similarVideoGroups = await videoAnalyzer.findSimilarVideos(
+            assets: videoAssetArray,
+            durationThreshold: 2.0,
+            progressHandler: { current, total in
+                updateProgress(step: "Finding similar videos...", current: current, total: total)
+            }
+        )
+
+        try Task.checkCancellation()
+
+        // Step 5c: Find optimizable photos (4K → 1080p)
+        updateProgress(step: "Finding optimizable photos...", current: 0, total: totalPhotos)
+
+        let imageAssetArray = assetsWithVectors.map { $0.asset }
+        let optimizablePhotos = await photoOptimizer.findOptimizablePhotos(
+            assets: imageAssetArray,
+            configuration: .preset1080p,
+            progressHandler: { current, total in
+                updateProgress(step: "Finding optimizable photos...", current: current, total: total)
+            }
+        )
+
+        // DEBUG: Log optimization opportunities
+        print("\n💾 OPTIMIZATION OPPORTUNITIES:")
+        print("   Found \(optimizablePhotos.count) photos that can be optimized")
+        if let firstPhoto = optimizablePhotos.first {
+            print("   Best saving: \(photoOptimizer.formatFileSize(firstPhoto.potentialSavings))")
+        }
 
         try Task.checkCancellation()
 
@@ -328,6 +368,9 @@ class ScanCoordinator: ObservableObject {
             totalSavings += video.fileSize
         }
 
+        // Add optimization savings
+        totalSavings += photoOptimizer.calculateTotalSavings(photos: optimizablePhotos)
+
         let duration = Date().timeIntervalSince(startTime)
 
         return ScanResults(
@@ -340,6 +383,8 @@ class ScanCoordinator: ObservableObject {
             darkPhotos: darkPhotos,
             screenshots: screenshots,
             largeVideos: largeVideos,
+            similarVideoGroups: similarVideoGroups,
+            optimizablePhotos: optimizablePhotos,
             potentialSavingsBytes: totalSavings,
             statistics: statistics
         )

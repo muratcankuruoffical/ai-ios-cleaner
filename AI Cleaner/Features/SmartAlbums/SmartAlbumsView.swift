@@ -74,6 +74,30 @@ struct SmartAlbumsView: View {
                         selectedAlbum = .largeVideos
                     }
                 }
+
+                if !scanResults.similarVideoGroups.isEmpty {
+                    AlbumRow(
+                        type: .similarVideos,
+                        count: scanResults.similarVideoGroups.reduce(0) { $0 + $1.videos.count },
+                        icon: "video.badge.plus",
+                        color: .pink
+                    )
+                    .onTapGesture {
+                        selectedAlbum = .similarVideos
+                    }
+                }
+
+                if !scanResults.optimizablePhotos.isEmpty {
+                    AlbumRow(
+                        type: .optimizable,
+                        count: scanResults.optimizablePhotos.count,
+                        icon: "arrow.down.circle",
+                        color: .cyan
+                    )
+                    .onTapGesture {
+                        selectedAlbum = .optimizable
+                    }
+                }
             }
         }
         .navigationTitle("Smart Albums")
@@ -106,6 +130,10 @@ struct SmartAlbumsView: View {
             )
         case .largeVideos:
             LargeVideosListView(videos: scanResults.largeVideos)
+        case .similarVideos:
+            SimilarVideosListView(groups: scanResults.similarVideoGroups)
+        case .optimizable:
+            PhotoOptimizationView(photos: scanResults.optimizablePhotos)
         }
     }
 }
@@ -118,6 +146,8 @@ enum AlbumType: Identifiable {
     case dark
     case screenshots
     case largeVideos
+    case similarVideos
+    case optimizable
 
     var id: String {
         switch self {
@@ -126,6 +156,8 @@ enum AlbumType: Identifiable {
         case .dark: return "dark"
         case .screenshots: return "screenshots"
         case .largeVideos: return "largeVideos"
+        case .similarVideos: return "similarVideos"
+        case .optimizable: return "optimizable"
         }
     }
 
@@ -136,6 +168,8 @@ enum AlbumType: Identifiable {
         case .dark: return "Dark Photos"
         case .screenshots: return "Screenshots"
         case .largeVideos: return "Large Videos"
+        case .similarVideos: return "Similar Videos"
+        case .optimizable: return "Optimizable Photos"
         }
     }
 }
@@ -343,6 +377,395 @@ struct LargeVideosListView: View {
     }
 }
 
+// MARK: - Similar Videos List View
+
+struct SimilarVideosListView: View {
+    let groups: [VideoAnalyzer.SimilarVideoGroup]
+    @State private var selectedGroup: VideoAnalyzer.SimilarVideoGroup?
+
+    var body: some View {
+        List {
+            ForEach(groups, id: \.videos.first?.asset.localIdentifier) { group in
+                SimilarVideoGroupRow(group: group)
+                    .onTapGesture {
+                        selectedGroup = group
+                    }
+            }
+        }
+        .navigationTitle("Similar Videos")
+        .sheet(item: $selectedGroup) { group in
+            NavigationView {
+                VideoGroupDetailView(group: group)
+            }
+        }
+    }
+}
+
+struct SimilarVideoGroupRow: View {
+    let group: VideoAnalyzer.SimilarVideoGroup
+
+    var totalSize: Int64 {
+        group.videos.reduce(0) { $0 + $1.fileSize }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("\(group.videos.count)")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.pink)
+                .frame(width: 50)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Similar Video Group")
+                    .font(.headline)
+                Text("\(group.videos.count) videos • \(VideoAnalyzer.shared.formatFileSize(totalSize))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+struct VideoGroupDetailView: View {
+    let group: VideoAnalyzer.SimilarVideoGroup
+
+    var body: some View {
+        List(group.videos, id: \.asset.localIdentifier) { video in
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "video.fill")
+                        .foregroundColor(.pink)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(VideoAnalyzer.shared.formatFileSize(video.fileSize))
+                            .font(.headline)
+                        Text(VideoAnalyzer.shared.formatDuration(video.duration))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    // Delete button
+                    Button(action: {
+                        // TODO: Implement deletion
+                    }) {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.borderless)
+                }
+
+                Text("\(Int(video.resolution.width))×\(Int(video.resolution.height)) @ \(String(format: "%.0f", video.frameRate))fps")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+
+                if let codec = video.codec {
+                    Text("Codec: \(codec)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .navigationTitle("Group Details")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Done") {
+                    // Dismiss
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Make SimilarVideoGroup Identifiable
+
+extension VideoAnalyzer.SimilarVideoGroup: Identifiable {
+    var id: String {
+        videos.first?.asset.localIdentifier ?? UUID().uuidString
+    }
+}
+
+// MARK: - Photo Optimization View
+
+struct PhotoOptimizationView: View {
+    let photos: [PhotoOptimizer.OptimizablePhoto]
+    @State private var isOptimizing = false
+    @State private var optimizationProgress: Double = 0
+    @State private var currentIndex = 0
+    @State private var results: [PhotoOptimizer.OptimizationResult] = []
+    @State private var showResults = false
+    @State private var deleteOriginals = false
+
+    var totalPotentialSavings: Int64 {
+        photos.reduce(0) { $0 + $1.potentialSavings }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header with savings info
+            VStack(spacing: 12) {
+                HStack {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundColor(.cyan)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Potential Savings")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(PhotoOptimizer.shared.formatFileSize(totalPotentialSavings))
+                            .font(.title2)
+                            .fontWeight(.bold)
+                    }
+
+                    Spacer()
+
+                    Text("\(photos.count)")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(.cyan)
+                }
+                .padding()
+                .background(Color.cyan.opacity(0.1))
+                .cornerRadius(12)
+
+                // Delete originals toggle
+                Toggle(isOn: $deleteOriginals) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Delete originals after optimization")
+                            .font(.subheadline)
+                        Text("Original photos will be moved to Recently Deleted")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .tint(.cyan)
+
+                // Optimize all button
+                if !isOptimizing {
+                    Button(action: {
+                        optimizeAll()
+                    }) {
+                        HStack {
+                            Image(systemName: "wand.and.stars")
+                            Text("Optimize All Photos")
+                        }
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.cyan)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                } else {
+                    VStack(spacing: 8) {
+                        ProgressView(value: optimizationProgress)
+                            .tint(.cyan)
+                        Text("Optimizing \(currentIndex) of \(photos.count)...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding()
+
+            // Photo list
+            List {
+                ForEach(photos, id: \.asset.localIdentifier) { photo in
+                    OptimizablePhotoRow(photo: photo)
+                }
+            }
+        }
+        .navigationTitle("Optimizable Photos")
+        .sheet(isPresented: $showResults) {
+            OptimizationResultsView(results: results)
+        }
+    }
+
+    private func optimizeAll() {
+        isOptimizing = true
+        optimizationProgress = 0
+        currentIndex = 0
+        results = []
+
+        Task {
+            let allResults = await PhotoOptimizer.shared.optimizePhotos(
+                photos: photos,
+                configuration: .preset1080p,
+                deleteOriginals: deleteOriginals,
+                progressHandler: { current, total, result in
+                    Task { @MainActor in
+                        currentIndex = current
+                        optimizationProgress = Double(current) / Double(total)
+                        results.append(result)
+                    }
+                }
+            )
+
+            await MainActor.run {
+                isOptimizing = false
+                showResults = true
+            }
+        }
+    }
+}
+
+struct OptimizablePhotoRow: View {
+    let photo: PhotoOptimizer.OptimizablePhoto
+    @State private var thumbnail: UIImage?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Thumbnail
+            Group {
+                if let thumbnail = thumbnail {
+                    Image(uiImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    ZStack {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                        ProgressView()
+                    }
+                }
+            }
+            .frame(width: 60, height: 60)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            // Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(Int(photo.currentResolution.width))×\(Int(photo.currentResolution.height))")
+                    .font(.headline)
+
+                Text(PhotoOptimizer.shared.formatFileSize(photo.currentSize))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.down")
+                        .font(.caption2)
+                    Text("\(PhotoOptimizer.shared.formatFileSize(photo.potentialSavings)) (\(String(format: "%.0f", photo.savingsPercentage))%)")
+                        .font(.caption)
+                }
+                .foregroundColor(.cyan)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 4)
+        .task {
+            await loadThumbnail()
+        }
+    }
+
+    private func loadThumbnail() async {
+        do {
+            let image = try await PhotoLibraryService.shared.loadThumbnail(for: photo.asset)
+            await MainActor.run {
+                thumbnail = image
+            }
+        } catch {
+            // Failed to load
+        }
+    }
+}
+
+struct OptimizationResultsView: View {
+    let results: [PhotoOptimizer.OptimizationResult]
+    @Environment(\.dismiss) var dismiss
+
+    var successCount: Int {
+        results.filter { $0.success }.count
+    }
+
+    var totalSaved: Int64 {
+        results.reduce(0) { $0 + $1.savedBytes }
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                // Success summary
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.green)
+
+                    Text("Optimization Complete!")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Optimized \(successCount) of \(results.count) photos")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text("Saved \(PhotoOptimizer.shared.formatFileSize(totalSaved))")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.cyan)
+                }
+                .padding()
+
+                // Results list
+                List {
+                    Section("Details") {
+                        ForEach(results, id: \.originalAsset.localIdentifier) { result in
+                            HStack {
+                                Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .foregroundColor(result.success ? .green : .red)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    if result.success {
+                                        Text("Saved \(PhotoOptimizer.shared.formatFileSize(result.savedBytes))")
+                                            .font(.subheadline)
+                                    } else {
+                                        Text("Failed")
+                                            .font(.subheadline)
+                                        if let error = result.error {
+                                            Text(error.localizedDescription)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+                .listStyle(.insetGrouped)
+            }
+            .navigationTitle("Results")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Make OptimizablePhoto Identifiable
+
+extension PhotoOptimizer.OptimizablePhoto: Identifiable {
+    var id: String {
+        asset.localIdentifier
+    }
+}
+
 // MARK: - Make SimilarityGroup Identifiable
 
 extension SimilarityService.SimilarityGroup: Identifiable {}
@@ -362,6 +785,8 @@ extension SimilarityService.SimilarityGroup: Identifiable {}
                 darkPhotos: [],
                 screenshots: [],
                 largeVideos: [],
+                similarVideoGroups: [],
+                optimizablePhotos: [],
                 potentialSavingsBytes: 2_500_000_000,
                 statistics: CleanupStatistics(
                     totalGroups: 25,
