@@ -9,6 +9,7 @@ import Foundation
 import Photos
 import UIKit
 import CoreImage
+import CoreData
 
 final class PhotoOptimizer {
     static let shared = PhotoOptimizer()
@@ -25,25 +26,25 @@ final class PhotoOptimizer {
         var minResolutionForOptimization: CGFloat = 2560 // ~4K
 
         /// JPEG compression quality (0.0 - 1.0)
-        var compressionQuality: CGFloat = 0.85
+        var compressionQuality: CGFloat = 0.70
 
         /// Only optimize photos taken in last N days (nil = all photos)
         var recentDaysOnly: Int? = 30
 
         static let `default` = Configuration()
 
-        /// 1080p preset
+        /// 1080p preset - Aggressive compression for real space savings
         static let preset1080p = Configuration(
             targetResolution: 1920,
             minResolutionForOptimization: 2560,
-            compressionQuality: 0.85
+            compressionQuality: 0.70  // Lower quality = smaller file
         )
 
-        /// High quality preset (less compression)
+        /// High quality preset - Balanced compression
         static let presetHighQuality = Configuration(
             targetResolution: 1920,
             minResolutionForOptimization: 2560,
-            compressionQuality: 0.90
+            compressionQuality: 0.80  // Still lower than before
         )
     }
 
@@ -147,7 +148,8 @@ final class PhotoOptimizer {
     func optimizePhoto(
         asset: PHAsset,
         configuration: Configuration = .default,
-        deleteOriginal: Bool = false
+        deleteOriginal: Bool = false,
+        clearCache: Bool = true
     ) async throws -> OptimizationResult {
         let startTime = Date()
 
@@ -165,18 +167,26 @@ final class PhotoOptimizer {
         }
 
         let targetSize = CGSize(
-            width: originalImage.size.width * scale,
-            height: originalImage.size.height * scale
+            width: floor(originalImage.size.width * scale),
+            height: floor(originalImage.size.height * scale)
         )
 
-        // Resize image
-        guard let resizedImage = resizeImage(originalImage, to: targetSize) else {
+        // Resize image with better quality
+        guard let resizedImage = resizeImageHighQuality(originalImage, to: targetSize) else {
             throw PhotoOptimizerError.resizeFailed
         }
 
         // Compress to JPEG
         guard let jpegData = resizedImage.jpegData(compressionQuality: configuration.compressionQuality) else {
             throw PhotoOptimizerError.compressionFailed
+        }
+
+        let optimizedSize = Int64(jpegData.count)
+
+        // Sanity check: If optimized is larger, throw error
+        if optimizedSize >= originalSize {
+            print("⚠️ Optimization failed: new size (\(optimizedSize/1024)KB) >= original (\(originalSize/1024)KB)")
+            throw PhotoOptimizerError.noSavings
         }
 
         // Save to photo library
@@ -208,12 +218,18 @@ final class PhotoOptimizer {
             newAsset = PhotoLibraryService.shared.fetchAsset(withLocalIdentifier: assetId)
         }
 
-        let newSize = newAsset != nil ? await PhotoLibraryService.shared.getAssetSize(for: newAsset!) : 0
+        let newSize = newAsset != nil ? await PhotoLibraryService.shared.getAssetSize(for: newAsset!) : optimizedSize
 
         // Delete original if requested and save succeeded
         if deleteOriginal, newAsset != nil, saveError == nil {
             do {
                 try await PhotoLibraryService.shared.delete(assets: [asset])
+                print("🗑️ Deleted original photo: \(asset.localIdentifier)")
+
+                // Clear cache for deleted asset if requested
+                if clearCache {
+                    await clearCacheForAsset(asset.localIdentifier)
+                }
             } catch {
                 // Log but don't fail the operation
                 print("⚠️ Failed to delete original asset: \(error)")
@@ -221,7 +237,8 @@ final class PhotoOptimizer {
         }
 
         let duration = Date().timeIntervalSince(startTime)
-        print("✅ Optimized photo in \(String(format: "%.2f", duration))s: \(originalSize/1024)KB → \(newSize/1024)KB")
+        let savedBytes = originalSize - newSize
+        print("✅ Optimized photo in \(String(format: "%.2f", duration))s: \(originalSize/1024)KB → \(newSize/1024)KB (saved \(savedBytes/1024)KB)")
 
         return OptimizationResult(
             originalAsset: asset,
@@ -242,15 +259,23 @@ final class PhotoOptimizer {
         progressHandler: ((Int, Int, OptimizationResult) -> Void)? = nil
     ) async -> [OptimizationResult] {
         var results: [OptimizationResult] = []
+        var deletedAssetIds: [String] = []
 
         for (index, photo) in photos.enumerated() {
             do {
                 let result = try await optimizePhoto(
                     asset: photo.asset,
                     configuration: configuration,
-                    deleteOriginal: deleteOriginals
+                    deleteOriginal: deleteOriginals,
+                    clearCache: false  // We'll do batch cleanup at the end
                 )
                 results.append(result)
+
+                // Track deleted assets for batch cache cleanup
+                if deleteOriginals && result.success {
+                    deletedAssetIds.append(photo.asset.localIdentifier)
+                }
+
                 progressHandler?(index + 1, photos.count, result)
             } catch {
                 let result = OptimizationResult(
@@ -271,6 +296,11 @@ final class PhotoOptimizer {
             }
         }
 
+        // Batch clear cache for all deleted assets
+        if !deletedAssetIds.isEmpty {
+            await clearCacheForAssets(deletedAssetIds)
+        }
+
         return results
     }
 
@@ -283,6 +313,37 @@ final class PhotoOptimizer {
         }
     }
 
+    private func resizeImageHighQuality(_ image: UIImage, to targetSize: CGSize) -> UIImage? {
+        guard let cgImage = image.cgImage else { return nil }
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+
+        guard let context = CGContext(
+            data: nil,
+            width: Int(targetSize.width),
+            height: Int(targetSize.height),
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo.rawValue
+        ) else {
+            return nil
+        }
+
+        // Use high quality interpolation
+        context.interpolationQuality = .high
+
+        // Draw the image
+        context.draw(cgImage, in: CGRect(origin: .zero, size: targetSize))
+
+        guard let resizedCGImage = context.makeImage() else {
+            return nil
+        }
+
+        return UIImage(cgImage: resizedCGImage, scale: 1.0, orientation: image.imageOrientation)
+    }
+
     func formatFileSize(_ bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .file
@@ -291,6 +352,53 @@ final class PhotoOptimizer {
 
     func calculateTotalSavings(photos: [OptimizablePhoto]) -> Int64 {
         photos.reduce(0) { $0 + $1.potentialSavings }
+    }
+
+    // MARK: - Cache Management
+
+    private func clearCacheForAsset(_ assetIdentifier: String) async {
+        let context = CoreDataStack.shared.newBackgroundContext()
+
+        await context.perform {
+            let fetchRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "AssetFingerprint")
+            fetchRequest.predicate = NSPredicate(format: "assetLocalId == %@", assetIdentifier)
+
+            let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+            deleteRequest.resultType = .resultTypeCount
+
+            do {
+                let result = try context.execute(deleteRequest) as? NSBatchDeleteResult
+                if let count = result?.result as? Int {
+                    print("🧹 Cleared cache for deleted asset: \(assetIdentifier) (\(count) records)")
+                }
+            } catch {
+                print("⚠️ Failed to clear cache for asset: \(error)")
+            }
+        }
+    }
+
+    /// Clear cache for multiple assets (batch operation)
+    func clearCacheForAssets(_ assetIdentifiers: [String]) async {
+        guard !assetIdentifiers.isEmpty else { return }
+
+        let context = CoreDataStack.shared.newBackgroundContext()
+
+        await context.perform {
+            let fetchRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "AssetFingerprint")
+            fetchRequest.predicate = NSPredicate(format: "assetLocalId IN %@", assetIdentifiers)
+
+            let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+            deleteRequest.resultType = .resultTypeCount
+
+            do {
+                let result = try context.execute(deleteRequest) as? NSBatchDeleteResult
+                if let count = result?.result as? Int {
+                    print("🧹 Cleared cache for \(assetIdentifiers.count) deleted assets (\(count) records)")
+                }
+            } catch {
+                print("⚠️ Failed to clear cache for assets: \(error)")
+            }
+        }
     }
 }
 
@@ -301,6 +409,7 @@ enum PhotoOptimizerError: Error, LocalizedError {
     case resizeFailed
     case compressionFailed
     case saveFailed
+    case noSavings
 
     var errorDescription: String? {
         switch self {
@@ -312,6 +421,8 @@ enum PhotoOptimizerError: Error, LocalizedError {
             return "Failed to compress image"
         case .saveFailed:
             return "Failed to save optimized image"
+        case .noSavings:
+            return "Optimized photo is not smaller than original"
         }
     }
 }

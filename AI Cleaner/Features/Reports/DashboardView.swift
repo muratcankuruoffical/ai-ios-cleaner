@@ -237,6 +237,27 @@ struct DashboardView: View {
                     value: "\(results.screenshots.count)",
                     color: .green
                 )
+
+                StatCard(
+                    icon: "video.fill",
+                    title: "Large Videos",
+                    value: "\(results.largeVideos.count)",
+                    color: .red
+                )
+
+                StatCard(
+                    icon: "video.badge.plus",
+                    title: "Similar Videos",
+                    value: "\(results.similarVideoGroups.reduce(0) { $0 + $1.videos.count })",
+                    color: .pink
+                )
+
+                StatCard(
+                    icon: "arrow.down.circle",
+                    title: "Optimizable",
+                    value: "\(results.optimizablePhotos.count)",
+                    color: .cyan
+                )
             }
         }
     }
