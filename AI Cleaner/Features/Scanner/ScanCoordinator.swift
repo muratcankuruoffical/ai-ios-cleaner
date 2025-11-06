@@ -240,13 +240,28 @@ class ScanCoordinator: ObservableObject {
             print("   First failure: \(failedAssets.first!.1.localizedDescription)")
         }
 
+        // Log individual asset analysis results
+        print("\n📸 ASSET ANALYSIS DETAILS:")
+        for (index, assetVector) in assetsWithVectors.prefix(10).enumerated() {
+            let meta = assetVector.metadata
+            print("   [\(index)] Blur: \(String(format: "%6.1f", meta.blurScore)) | Bright: \(String(format: "%.2f", meta.brightnessScore)) | SS: \(meta.isScreenshot ? "YES" : "NO ") | Size: \(meta.fileSize/1024)KB")
+        }
+
         try Task.checkCancellation()
 
-        // Step 3: Find similar groups
+        // Step 3: Find similar groups with STRICTER threshold for perceptual hash
         updateProgress(step: "Finding duplicates...", current: 0, total: 100)
+
+        // Use much stricter threshold for perceptual hash (8x8 = simple comparison)
+        let strictConfig = SimilarityService.Configuration(
+            similarityThreshold: 0.05,  // Very strict! 0.25 was grouping everything
+            minGroupSize: 2,
+            useCosineSimilarity: true
+        )
+
         let similarGroups = await similarityService.findSimilarGroups(
             assets: assetsWithVectors,
-            configuration: .relaxed  // Use relaxed threshold for better detection
+            configuration: strictConfig
         )
 
         // DEBUG: Log similarity results
