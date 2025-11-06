@@ -303,14 +303,8 @@ final class BlurDetector {
 
 // MARK: - Helper Extension
 
-extension vImage_Buffer {
-    init() {
-        self.data = nil
-        self.height = 0
-        self.width = 0
-        self.rowBytes = 0
-    }
-}
+// vImage_Buffer is a C struct and automatically zero-initializes
+// No custom init needed - var buffer = vImage_Buffer() works automatically
 
 // MARK: - Helper Function
 
