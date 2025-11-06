@@ -6,7 +6,7 @@
 //
 
 import Foundation
-// import RevenueCat // Uncomment when adding RevenueCat via SPM
+import RevenueCat
 
 final class RevenueCatManager: ObservableObject {
     static let shared = RevenueCatManager()
@@ -19,7 +19,25 @@ final class RevenueCatManager: ObservableObject {
 
     // MARK: - Configuration
 
-    private let apiKey = "YOUR_REVENUECAT_API_KEY" // Replace with your actual key
+    private var apiKey: String {
+        // Read API key from Info.plist (populated from Config.xcconfig)
+        guard let key = Bundle.main.object(forInfoDictionaryKey: "REVENUECAT_API_KEY") as? String,
+              !key.isEmpty,
+              !key.contains("YOUR_REVENUECAT") else {
+            fatalError("""
+                RevenueCat API key not configured.
+
+                Setup steps:
+                1. Copy Config.example.xcconfig to Config.xcconfig
+                2. Add your RevenueCat API key to Config.xcconfig
+                3. In Xcode: Project > Info > Configurations > Set Config.xcconfig for Debug & Release
+                4. Add REVENUECAT_API_KEY to Info.plist as $(REVENUECAT_API_KEY)
+
+                See README.md for detailed instructions.
+                """)
+        }
+        return key
+    }
 
     struct EntitlementKeys {
         static let pro = "pro"
@@ -34,8 +52,6 @@ final class RevenueCatManager: ObservableObject {
     // MARK: - Setup
 
     func configure() {
-        // Uncomment when RevenueCat is added via SPM
-        /*
         Purchases.logLevel = .debug
         Purchases.configure(withAPIKey: apiKey)
 
@@ -48,16 +64,11 @@ final class RevenueCatManager: ObservableObject {
         Task {
             await checkSubscriptionStatus()
         }
-        */
-
-        print("⚠️ RevenueCat SDK not configured. Add via SPM and uncomment configuration code.")
     }
 
     // MARK: - Subscription Status
 
     func checkSubscriptionStatus() async {
-        // Uncomment when RevenueCat is added
-        /*
         do {
             let customerInfo = try await Purchases.shared.customerInfo()
             await MainActor.run {
@@ -67,19 +78,11 @@ final class RevenueCatManager: ObservableObject {
         } catch {
             print("Failed to fetch customer info: \(error)")
         }
-        */
-
-        // Mock for now
-        await MainActor.run {
-            self.isProUser = false
-        }
     }
 
     // MARK: - Offerings
 
     func loadOfferings() async throws -> Offering? {
-        // Uncomment when RevenueCat is added
-        /*
         let offerings = try await Purchases.shared.offerings()
         let offering = offerings.current
 
@@ -88,17 +91,11 @@ final class RevenueCatManager: ObservableObject {
         }
 
         return offering
-        */
-
-        // Mock for now
-        return nil
     }
 
     // MARK: - Purchase
 
     func purchase(package: Package) async throws -> CustomerInfo {
-        // Uncomment when RevenueCat is added
-        /*
         let result = try await Purchases.shared.purchase(package: package)
 
         await MainActor.run {
@@ -107,10 +104,6 @@ final class RevenueCatManager: ObservableObject {
         }
 
         return result.customerInfo
-        */
-
-        // Mock for now
-        throw RevenueCatError.notConfigured
     }
 
     func purchaseMonthly() async throws {
@@ -143,47 +136,32 @@ final class RevenueCatManager: ObservableObject {
     // MARK: - Restore
 
     func restorePurchases() async throws {
-        // Uncomment when RevenueCat is added
-        /*
         let customerInfo = try await Purchases.shared.restorePurchases()
 
         await MainActor.run {
             self.customerInfo = customerInfo
             self.isProUser = customerInfo.entitlements[EntitlementKeys.pro]?.isActive == true
         }
-        */
-
-        throw RevenueCatError.notConfigured
     }
 
     // MARK: - User Management
 
     func login(userId: String) async throws {
-        // Uncomment when RevenueCat is added
-        /*
         let (customerInfo, _) = try await Purchases.shared.logIn(userId)
 
         await MainActor.run {
             self.customerInfo = customerInfo
             self.isProUser = customerInfo.entitlements[EntitlementKeys.pro]?.isActive == true
         }
-        */
-
-        throw RevenueCatError.notConfigured
     }
 
     func logout() async throws {
-        // Uncomment when RevenueCat is added
-        /*
         let customerInfo = try await Purchases.shared.logOut()
 
         await MainActor.run {
             self.customerInfo = customerInfo
             self.isProUser = false
         }
-        */
-
-        throw RevenueCatError.notConfigured
     }
 
     // MARK: - Pricing Information
@@ -222,31 +200,6 @@ final class RevenueCatManager: ObservableObject {
 
         return String(format: "%.0f%%", savingsPercentage)
     }
-}
-
-// MARK: - Mock Types (Remove when RevenueCat is added)
-
-struct Offering {
-    let monthly: Package?
-    let annual: Package?
-    let lifetime: Package?
-}
-
-struct Package {
-    let localizedPriceString: String
-    let storeProduct: StoreProduct
-}
-
-struct StoreProduct {
-    let price: Decimal
-}
-
-struct CustomerInfo {
-    let entitlements: [String: Entitlement]
-}
-
-struct Entitlement {
-    let isActive: Bool
 }
 
 // MARK: - Errors
