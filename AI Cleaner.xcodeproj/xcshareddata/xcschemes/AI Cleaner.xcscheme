@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "56345AC9B18EC5CCD410FCE2"
+               BlueprintIdentifier = "56345AC9B18EC5CCD410FCE"
                BuildableName = "AI Cleaner.app"
                BlueprintName = "AI Cleaner"
                ReferencedContainer = "container:AI Cleaner.xcodeproj">
@@ -43,7 +43,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "56345AC9B18EC5CCD410FCE2"
+            BlueprintIdentifier = "56345AC9B18EC5CCD410FCE"
             BuildableName = "AI Cleaner.app"
             BlueprintName = "AI Cleaner"
             ReferencedContainer = "container:AI Cleaner.xcodeproj">
@@ -60,7 +60,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "56345AC9B18EC5CCD410FCE2"
+            BlueprintIdentifier = "56345AC9B18EC5CCD410FCE"
             BuildableName = "AI Cleaner.app"
             BlueprintName = "AI Cleaner"
             ReferencedContainer = "container:AI Cleaner.xcodeproj">
