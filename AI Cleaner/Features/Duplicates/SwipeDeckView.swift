@@ -101,7 +101,7 @@ struct SwipeDeckView: View {
             }
         }
         .padding()
-        .background(Color.white)
+        .background(Color(.systemBackground))
     }
 
     // MARK: - Completion View
@@ -202,7 +202,7 @@ struct SwipeDeckView: View {
             }
         }
         .padding()
-        .background(Color.white)
+        .background(Color(.systemBackground))
         .disabled(!viewModel.hasMoreCards)
     }
 }
@@ -226,7 +226,7 @@ struct SwipeCardView: View {
         ZStack(alignment: .topLeading) {
             // Card Background
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
+                .fill(Color(.systemBackground))
                 .shadow(radius: 8)
 
             // Image

@@ -193,7 +193,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color.white)
+        .background(Color(.systemBackground))
         .cornerRadius(16)
         .shadow(radius: 4)
     }
