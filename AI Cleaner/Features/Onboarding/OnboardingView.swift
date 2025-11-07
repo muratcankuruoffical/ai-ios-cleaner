@@ -2,123 +2,178 @@
 //  OnboardingView.swift
 //  AI Cleaner
 //
-//  Onboarding flow with privacy and permission screens
+//  Onboarding flow with privacy and permission screens - Dark Theme
 //
 
 import SwiftUI
-internal import Combine
 
 struct OnboardingView: View {
     @StateObject private var viewModel = OnboardingViewModel()
     @Binding var isOnboardingComplete: Bool
 
     var body: some View {
-        TabView(selection: $viewModel.currentPage) {
-            WelcomePageView()
-                .tag(0)
+        ZStack {
+            CleanerTheme.background
+                .ignoresSafeArea()
 
-            PrivacyPageView()
-                .tag(1)
+            TabView(selection: $viewModel.currentPage) {
+                WelcomePageView()
+                    .tag(0)
 
-            PermissionPageView(
-                onPermissionGranted: {
-                    isOnboardingComplete = true
-                    AnalyticsManager.shared.logOnboardingCompleted()
-                }
-            )
-            .tag(2)
+                PrivacyPageView()
+                    .tag(1)
+
+                PermissionPageView(
+                    onPermissionGranted: {
+                        isOnboardingComplete = true
+                        AnalyticsManager.shared.logOnboardingCompleted()
+                    }
+                )
+                .tag(2)
+            }
+            .tabViewStyle(.page)
+            .indexViewStyle(.page(backgroundDisplayMode: .always))
         }
-        .tabViewStyle(.page)
-        .indexViewStyle(.page(backgroundDisplayMode: .always))
+        .preferredColorScheme(.dark)
         .onAppear {
             AnalyticsManager.shared.logOnboardingStarted()
         }
     }
 }
 
-// MARK: - Welcome Page
+// MARK: - Welcome Page (Dark Theme)
 
 struct WelcomePageView: View {
+    @State private var animateIcon = false
+
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 40) {
             Spacer()
 
-            // App Icon
-            Image(systemName: "sparkles.square.filled.on.square")
-                .font(.system(size: 100))
-                .foregroundColor(.blue)
+            // App Icon with Animation
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [CleanerTheme.primary.opacity(0.3), CleanerTheme.accent.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 140, height: 140)
+                    .scaleEffect(animateIcon ? 1.0 : 0.8)
+                    .opacity(animateIcon ? 1.0 : 0.6)
+
+                Image(systemName: "sparkles.square.filled.on.square")
+                    .font(.system(size: 80))
+                    .foregroundColor(CleanerTheme.primary)
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    animateIcon = true
+                }
+            }
 
             VStack(spacing: 16) {
                 Text("Welcome to AI Cleaner")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+                    .multilineTextAlignment(.center)
 
                 Text("Smart, on-device photo cleaning powered by AI")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.body)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                    .padding(.horizontal, 32)
             }
 
             Spacer()
 
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 FeatureRow(
-                    icon: "square.on.square",
+                    icon: "rectangle.on.rectangle.angled",
                     title: "Find Duplicates",
-                    description: "Automatically detect similar photos"
+                    description: "Automatically detect similar photos",
+                    color: CleanerTheme.primary
                 )
 
                 FeatureRow(
                     icon: "eye.slash",
                     title: "Detect Blurry Photos",
-                    description: "Identify low-quality images"
+                    description: "Identify low-quality images",
+                    color: CleanerTheme.accentGreen
                 )
 
                 FeatureRow(
-                    icon: "camera",
+                    icon: "camera.viewfinder",
                     title: "Find Screenshots",
-                    description: "Organize and clean up screenshots"
+                    description: "Organize and clean up screenshots",
+                    color: CleanerTheme.accent
                 )
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 24)
 
             Spacer()
 
-            Text("Swipe to continue")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.bottom)
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 10))
+                Text("Swipe to continue")
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10))
+            }
+            .cleanerFont(.caption)
+            .padding(.bottom, 32)
         }
     }
 }
 
-// MARK: - Privacy Page
+// MARK: - Privacy Page (Dark Theme)
 
 struct PrivacyPageView: View {
+    @State private var animateShield = false
+
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 40) {
             Spacer()
 
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 100))
-                .foregroundColor(.green)
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [CleanerTheme.accentGreen.opacity(0.3), CleanerTheme.accentGreen.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 140, height: 140)
+                    .scaleEffect(animateShield ? 1.0 : 0.9)
+
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(CleanerTheme.accentGreen)
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    animateShield = true
+                }
+            }
 
             VStack(spacing: 16) {
                 Text("Your Privacy Matters")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+                    .multilineTextAlignment(.center)
 
                 Text("All analysis happens on your device")
-                    .font(.title3)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(CleanerTheme.textSecondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                    .padding(.horizontal, 32)
             }
 
             Spacer()
 
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
                 PrivacyFeatureRow(
                     icon: "iphone",
                     title: "100% On-Device",
@@ -137,47 +192,64 @@ struct PrivacyPageView: View {
                     description: "No one can access your photos but you"
                 )
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 24)
 
             Spacer()
 
-            Text("Swipe to continue")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.bottom)
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 10))
+                Text("Swipe to continue")
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10))
+            }
+            .cleanerFont(.caption)
+            .padding(.bottom, 32)
         }
     }
 }
 
-// MARK: - Permission Page
+// MARK: - Permission Page (Dark Theme)
 
 struct PermissionPageView: View {
     @State private var isRequesting = false
     let onPermissionGranted: () -> Void
 
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 40) {
             Spacer()
 
-            Image(systemName: "photo.stack")
-                .font(.system(size: 100))
-                .foregroundColor(.purple)
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [CleanerTheme.accent.opacity(0.3), CleanerTheme.accent.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 140, height: 140)
+
+                Image(systemName: "photo.stack")
+                    .font(.system(size: 80))
+                    .foregroundColor(CleanerTheme.accent)
+            }
 
             VStack(spacing: 16) {
                 Text("Access Your Photos")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+                    .multilineTextAlignment(.center)
 
                 Text("We need access to analyze and clean your photo library")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.body)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                    .padding(.horizontal, 32)
             }
 
             Spacer()
 
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 InfoRow(
                     icon: "checkmark.circle.fill",
                     text: "Scan for duplicates and similar photos"
@@ -198,7 +270,7 @@ struct PermissionPageView: View {
                     text: "Safely delete unwanted photos"
                 )
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 24)
 
             Spacer()
 
@@ -210,17 +282,23 @@ struct PermissionPageView: View {
                             .tint(.white)
                     } else {
                         Text("Grant Photo Access")
-                            .fontWeight(.semibold)
+                            .font(.system(size: 18, weight: .semibold))
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
+                .padding(.vertical, 16)
                 .foregroundColor(.white)
-                .cornerRadius(12)
+                .background(
+                    LinearGradient(
+                        colors: [CleanerTheme.primary, Color(hex: "#0066DD")],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(16)
             }
             .disabled(isRequesting)
-            .padding(.horizontal)
+            .padding(.horizontal, 24)
             .padding(.bottom, 32)
         }
     }
@@ -246,33 +324,38 @@ struct PermissionPageView: View {
     }
 }
 
-// MARK: - Helper Views
+// MARK: - Helper Views (Dark Theme)
 
 struct FeatureRow: View {
     let icon: String
     let title: String
     let description: String
+    let color: Color
 
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.blue)
-                .frame(width: 32)
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundColor(color)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(CleanerTheme.textPrimary)
                 Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.caption)
             }
 
             Spacer()
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(12)
+        .padding(16)
+        .card(backgroundColor: CleanerTheme.surface)
     }
 }
 
@@ -283,24 +366,28 @@ struct PrivacyFeatureRow: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.green)
-                .frame(width: 32)
+            ZStack {
+                Circle()
+                    .fill(CleanerTheme.accentGreen.opacity(0.15))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundColor(CleanerTheme.accentGreen)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(CleanerTheme.textPrimary)
                 Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.caption)
             }
 
             Spacer()
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(12)
+        .padding(16)
+        .card(backgroundColor: CleanerTheme.surface)
     }
 }
 
@@ -311,9 +398,10 @@ struct InfoRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundColor(.green)
+                .font(.title3)
+                .foregroundColor(CleanerTheme.accentGreen)
             Text(text)
-                .font(.body)
+                .cleanerFont(.body)
             Spacer()
         }
     }

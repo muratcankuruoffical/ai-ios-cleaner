@@ -2,7 +2,7 @@
 //  PaywallView.swift
 //  AI Cleaner
 //
-//  Paywall for premium subscriptions
+//  Paywall for premium subscriptions - Dark Theme
 //
 
 import SwiftUI
@@ -23,11 +23,11 @@ struct PaywallView: View {
 
     var body: some View {
         ZStack {
-            // Background gradient
+            // Dark Background with Gradient
             LinearGradient(
-                colors: [.blue, .purple],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                colors: [CleanerTheme.background, Color(hex: "#000000")],
+                startPoint: .top,
+                endPoint: .bottom
             )
             .ignoresSafeArea()
 
@@ -39,29 +39,39 @@ struct PaywallView: View {
                         Button(action: { dismiss() }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title2)
-                                .foregroundColor(.white.opacity(0.7))
+                                .foregroundColor(CleanerTheme.iconPrimary)
                         }
                     }
                     .padding()
 
                     // Header
-                    VStack(spacing: 16) {
-                        Image(systemName: "crown.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.yellow)
+                    VStack(spacing: 20) {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [CleanerTheme.accent.opacity(0.3), CleanerTheme.accent.opacity(0.1)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 100, height: 100)
+
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 50))
+                                .foregroundColor(CleanerTheme.accent)
+                        }
 
                         Text("Unlock Pro Features")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundColor(CleanerTheme.textPrimary)
 
                         Text("Get unlimited access to all features")
-                            .font(.body)
-                            .foregroundColor(.white.opacity(0.9))
+                            .cleanerFont(.body)
                     }
 
                     // Features
-                    VStack(spacing: 20) {
+                    VStack(spacing: 16) {
                         FeatureItem(
                             icon: "infinity",
                             title: "Unlimited Scans",
@@ -75,7 +85,7 @@ struct PaywallView: View {
                         )
 
                         FeatureItem(
-                            icon: "video.fill",
+                            icon: "film",
                             title: "Large Video Finder",
                             description: "Find and clean up large video files"
                         )
@@ -92,13 +102,12 @@ struct PaywallView: View {
                             description: "Get help faster with priority support"
                         )
                     }
-                    .padding()
-                    .background(Color.white.opacity(0.15))
-                    .cornerRadius(20)
+                    .padding(20)
+                    .card(backgroundColor: CleanerTheme.surface)
                     .padding(.horizontal)
 
                     // Plans
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         PlanCard(
                             type: .annual,
                             title: "Annual",
@@ -108,7 +117,9 @@ struct PaywallView: View {
                             isSelected: selectedPlan == .annual
                         )
                         .onTapGesture {
-                            selectedPlan = .annual
+                            withAnimation(.spring(response: 0.3)) {
+                                selectedPlan = .annual
+                            }
                         }
 
                         PlanCard(
@@ -120,7 +131,9 @@ struct PaywallView: View {
                             isSelected: selectedPlan == .monthly
                         )
                         .onTapGesture {
-                            selectedPlan = .monthly
+                            withAnimation(.spring(response: 0.3)) {
+                                selectedPlan = .monthly
+                            }
                         }
 
                         PlanCard(
@@ -132,7 +145,9 @@ struct PaywallView: View {
                             isSelected: selectedPlan == .lifetime
                         )
                         .onTapGesture {
-                            selectedPlan = .lifetime
+                            withAnimation(.spring(response: 0.3)) {
+                                selectedPlan = .lifetime
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -143,17 +158,23 @@ struct PaywallView: View {
                             if isPurchasing {
                                 ProgressView()
                                     .progressViewStyle(.circular)
-                                    .tint(.blue)
+                                    .tint(.white)
                             } else {
                                 Text("Continue")
-                                    .fontWeight(.semibold)
+                                    .font(.system(size: 18, weight: .semibold))
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.white)
-                        .foregroundColor(.blue)
-                        .cornerRadius(12)
+                        .padding(.vertical, 16)
+                        .foregroundColor(.white)
+                        .background(
+                            LinearGradient(
+                                colors: [CleanerTheme.primary, Color(hex: "#0066DD")],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(16)
                     }
                     .disabled(isPurchasing)
                     .padding(.horizontal)
@@ -161,8 +182,7 @@ struct PaywallView: View {
                     // Restore Button
                     Button(action: restore) {
                         Text("Restore Purchases")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
+                            .cleanerFont(.label)
                     }
 
                     // Terms
@@ -171,11 +191,12 @@ struct PaywallView: View {
                         Button("Privacy") { }
                     }
                     .font(.caption2)
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(CleanerTheme.textSecondary)
                     .padding(.bottom, 32)
                 }
             }
         }
+        .preferredColorScheme(.dark)
         .alert("Error", isPresented: $showingError) {
             Button("OK") { }
         } message: {
@@ -228,7 +249,7 @@ struct PaywallView: View {
     }
 }
 
-// MARK: - Feature Item
+// MARK: - Feature Item (Dark Theme)
 
 struct FeatureItem: View {
     let icon: String
@@ -237,18 +258,22 @@ struct FeatureItem: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.yellow)
-                .frame(width: 32)
+            ZStack {
+                Circle()
+                    .fill(CleanerTheme.primary.opacity(0.15))
+                    .frame(width: 44, height: 44)
+
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundColor(CleanerTheme.primary)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
-                    .foregroundColor(.white)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(CleanerTheme.textPrimary)
                 Text(description)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+                    .cleanerFont(.caption)
             }
 
             Spacer()
@@ -256,7 +281,7 @@ struct FeatureItem: View {
     }
 }
 
-// MARK: - Plan Card
+// MARK: - Plan Card (Dark Theme)
 
 struct PlanCard: View {
     let type: PaywallView.PlanType
@@ -271,44 +296,51 @@ struct PlanCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(title)
-                        .font(.headline)
-                        .foregroundColor(isSelected ? .blue : .white)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(isSelected ? CleanerTheme.primary : CleanerTheme.textPrimary)
 
                     if let badge = badge {
                         Text(badge)
-                            .font(.caption2)
-                            .fontWeight(.bold)
+                            .font(.system(size: 10, weight: .bold))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.yellow)
-                            .foregroundColor(.black)
-                            .cornerRadius(4)
+                            .background(CleanerTheme.accent)
+                            .foregroundColor(CleanerTheme.background)
+                            .cornerRadius(6)
                     }
                 }
 
                 Text(price)
-                    .font(.body)
-                    .foregroundColor(isSelected ? .blue : .white.opacity(0.8))
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(isSelected ? CleanerTheme.textPrimary : CleanerTheme.textSecondary)
 
                 if let savings = savings {
                     Text(savings)
-                        .font(.caption)
-                        .foregroundColor(isSelected ? .blue : .white.opacity(0.7))
+                        .cleanerFont(.caption)
+                        .foregroundColor(isSelected ? CleanerTheme.accentGreen : CleanerTheme.textTertiary)
                 }
             }
 
             Spacer()
 
-            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                .font(.title2)
-                .foregroundColor(isSelected ? .blue : .white.opacity(0.5))
+            ZStack {
+                Circle()
+                    .stroke(isSelected ? CleanerTheme.primary : CleanerTheme.iconPrimary, lineWidth: 2)
+                    .frame(width: 28, height: 28)
+
+                if isSelected {
+                    Circle()
+                        .fill(CleanerTheme.primary)
+                        .frame(width: 16, height: 16)
+                }
+            }
         }
-        .padding()
-        .background(isSelected ? Color.white : Color.white.opacity(0.15))
-        .cornerRadius(12)
+        .padding(20)
+        .background(isSelected ? CleanerTheme.primary.opacity(0.1) : CleanerTheme.surface)
+        .cornerRadius(16)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isSelected ? CleanerTheme.primary : Color.clear, lineWidth: 2)
         )
     }
 }

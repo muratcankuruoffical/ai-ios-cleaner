@@ -2,30 +2,56 @@
 //  Color+Extensions.swift
 //  AI Cleaner
 //
-//  Color palette and extensions
+//  Color palette and extensions - Dark Theme Design System
 //
 
 import SwiftUI
 
-extension Color {
-    // MARK: - App Colors
-
-    static let appPrimary = Color.blue
-    static let appSecondary = Color.purple
-    static let appAccent = Color.green
-
-    // MARK: - Semantic Colors
-
-    static let success = Color.green
-    static let warning = Color.orange
-    static let danger = Color.red
-    static let info = Color.blue
+// MARK: - Cleaner Theme
+enum CleanerTheme {
+    // MARK: - Primary Colors
+    static let primary = Color(hex: "#0077F9")        // Primary Blue
+    static let accent = Color(hex: "#F9C200")         // Accent Yellow
+    static let accentGreen = Color(hex: "#5BAE1F")    // Accent Green
+    static let accentRed = Color(hex: "#DE4841")      // Accent Red
 
     // MARK: - Background Colors
+    static let background = Color(hex: "#0F0D1C")     // Dark Gray Background
+    static let surface = Color(hex: "#212126")        // Secondary Gray Surface
+    static let cardBackground = Color(hex: "#595B72") // Gray Cards/Containers
 
-    static let backgroundPrimary = Color(uiColor: .systemBackground)
-    static let backgroundSecondary = Color(uiColor: .secondarySystemBackground)
-    static let backgroundTertiary = Color(uiColor: .tertiarySystemBackground)
+    // MARK: - Text Colors
+    static let textPrimary = Color.white              // White Text
+    static let textSecondary = Color(hex: "#6677B1")  // Secondary Blue-Gray Text
+    static let textTertiary = Color(hex: "#8E90A6")   // Tertiary Gray Text
+
+    // MARK: - Semantic Colors
+    static let success = Color(hex: "#5BAE1F")        // Green
+    static let warning = Color(hex: "#F9C200")        // Yellow
+    static let danger = Color(hex: "#DE4841")         // Red
+    static let info = Color(hex: "#0077F9")           // Blue
+
+    // MARK: - Icon Colors
+    static let iconPrimary = Color(hex: "#A0A3BD")    // Light Gray Icons
+    static let iconActive = Color(hex: "#0077F9")     // Active Blue Icons
+}
+
+extension Color {
+    // MARK: - App Colors (Legacy Support - Redirects to CleanerTheme)
+    static let appPrimary = CleanerTheme.primary
+    static let appSecondary = CleanerTheme.surface
+    static let appAccent = CleanerTheme.accent
+
+    // MARK: - Semantic Colors (Legacy Support)
+    static let success = CleanerTheme.success
+    static let warning = CleanerTheme.warning
+    static let danger = CleanerTheme.danger
+    static let info = CleanerTheme.info
+
+    // MARK: - Background Colors (Legacy Support)
+    static let backgroundPrimary = CleanerTheme.background
+    static let backgroundSecondary = CleanerTheme.surface
+    static let backgroundTertiary = CleanerTheme.cardBackground
 
     // MARK: - Custom Initializers
 

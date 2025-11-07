@@ -2,12 +2,11 @@
 //  DashboardView.swift
 //  AI Cleaner
 //
-//  Main dashboard with scan results and reports
+//  Main dashboard with scan results and reports - Dark Theme
 //
 
 import SwiftUI
 import Charts
-internal import Combine
 
 struct DashboardView: View {
     @StateObject private var scanCoordinator = ScanCoordinator()
@@ -16,38 +15,70 @@ struct DashboardView: View {
     @State private var showingSmartAlbums = false
     @State private var showingContactsPermissionAlert = false
     @State private var showingCalendarPermissionAlert = false
+    @State private var animateContent = false
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    headerView
+            ZStack {
+                // Dark Background
+                CleanerTheme.background
+                    .ignoresSafeArea()
 
-                    // Scan Button or Results
-                    if let results = scanCoordinator.scanResults {
-                        resultsCard(results)
-                    } else {
-                        scanPromptCard
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header
+                        headerView
+
+                        // Storage Donut Chart (if scan completed)
+                        if let results = scanCoordinator.scanResults {
+                            storageDonutCard(results)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+
+                        // Scan Button or Results
+                        if let results = scanCoordinator.scanResults {
+                            resultsCard(results)
+                                .transition(.scale.combined(with: .opacity))
+                        } else {
+                            scanPromptCard
+                                .transition(.scale.combined(with: .opacity))
+                        }
+
+                        // Quick Stats
+                        if let results = scanCoordinator.scanResults {
+                            quickStatsView(results)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+
+                        // Recent Activity
+                        if scanCoordinator.scanResults != nil {
+                            recentActivityView
+                                .transition(.scale.combined(with: .opacity))
+                        }
+
+                        // System Health
+                        systemHealthView
+                            .transition(.scale.combined(with: .opacity))
                     }
-
-                    // Quick Stats
-                    if let results = scanCoordinator.scanResults {
-                        quickStatsView(results)
-                    }
-
-                    // Recent Activity
-                    recentActivityView
-
-                    // System Health (Battery + Storage)
-                    systemHealthView
-
-                    // Storage Recommendations
-                    storageRecommendationsWidget
+                    .padding()
+                    .opacity(animateContent ? 1 : 0)
+                    .offset(y: animateContent ? 0 : 20)
                 }
-                .padding()
             }
-            .navigationTitle("AI Cleaner")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("AI Cleaner")
+                        .cleanerFont(.title)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: SettingsView()) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title3)
+                            .foregroundColor(CleanerTheme.iconPrimary)
+                    }
+                }
+            }
             .sheet(isPresented: $showingScanProgress) {
                 ScanProgressView(coordinator: scanCoordinator)
             }
@@ -97,6 +128,12 @@ struct DashboardView: View {
                 Text("Please grant Calendar permission in Settings to scan for old events.")
             }
         }
+        .preferredColorScheme(.dark)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.6)) {
+                animateContent = true
+            }
+        }
     }
 
     // MARK: - Header
@@ -105,39 +142,120 @@ struct DashboardView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Hello!")
-                    .font(.title)
-                    .fontWeight(.bold)
+                    .cleanerFont(.title)
                 Text("Keep your photos organized")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.label)
             }
 
             Spacer()
+        }
+    }
 
-            NavigationLink(destination: SettingsView()) {
-                Image(systemName: "gearshape.fill")
-                    .font(.title2)
-                    .foregroundColor(.gray)
+    // MARK: - Storage Donut Card
+
+    private func storageDonutCard(_ results: ScanCoordinator.ScanResults) -> some View {
+        let storage = SystemInsights.shared.getStorageInfo()
+        let potentialSavingsBytes = results.statistics.totalSize
+        let potentialSavingsGB = Double(potentialSavingsBytes) / 1_073_741_824 // Convert to GB
+
+        return VStack(spacing: 20) {
+            HStack {
+                Text("Storage Overview")
+                    .cleanerFont(.subtitle)
+                Spacer()
+            }
+
+            if let storage = storage {
+                ZStack {
+                    // Background Ring
+                    Circle()
+                        .stroke(CleanerTheme.surface, lineWidth: 20)
+                        .frame(width: 180, height: 180)
+
+                    // Usage Ring
+                    Circle()
+                        .trim(from: 0, to: storage.usagePercentage / 100)
+                        .stroke(
+                            LinearGradient(
+                                colors: [CleanerTheme.primary, CleanerTheme.accent],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            style: StrokeStyle(lineWidth: 20, lineCap: .round)
+                        )
+                        .frame(width: 180, height: 180)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeOut(duration: 1.0), value: storage.usagePercentage)
+
+                    // Center Content
+                    VStack(spacing: 4) {
+                        Text("\(Int(storage.usagePercentage))%")
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundColor(CleanerTheme.textPrimary)
+
+                        Text("Used")
+                            .cleanerFont(.caption)
+                    }
+                }
+
+                // Stats Grid
+                HStack(spacing: 16) {
+                    VStack(spacing: 4) {
+                        Text(storage.formatBytes(storage.usedSpace))
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(CleanerTheme.textPrimary)
+                        Text("Used")
+                            .cleanerFont(.caption)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    Divider()
+                        .frame(height: 40)
+                        .background(CleanerTheme.surface)
+
+                    VStack(spacing: 4) {
+                        Text(storage.formatBytes(storage.freeSpace))
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(CleanerTheme.accentGreen)
+                        Text("Free")
+                            .cleanerFont(.caption)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    Divider()
+                        .frame(height: 40)
+                        .background(CleanerTheme.surface)
+
+                    VStack(spacing: 4) {
+                        Text(String(format: "%.1f GB", potentialSavingsGB))
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(CleanerTheme.accent)
+                        Text("Can Save")
+                            .cleanerFont(.caption)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
             }
         }
+        .padding(24)
+        .card(backgroundColor: CleanerTheme.surface)
     }
 
     // MARK: - Scan Prompt Card
 
     private var scanPromptCard: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Image(systemName: "sparkles")
                 .font(.system(size: 60))
-                .foregroundColor(.blue)
+                .foregroundColor(CleanerTheme.primary)
+                .symbolEffect(.bounce, options: .repeat(2))
 
             VStack(spacing: 8) {
                 Text("Start Smart Scan")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                    .cleanerFont(.title)
 
                 Text("Analyze your photo library for duplicates, blurry photos, and more")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.body)
                     .multilineTextAlignment(.center)
             }
 
@@ -145,30 +263,34 @@ struct DashboardView: View {
                 scanCoordinator.startScan()
             }) {
                 Text("Start Scan")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
-                    .cornerRadius(12)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [CleanerTheme.primary, Color(hex: "#0066DD")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(16)
             }
         }
-        .padding()
-        .background(Color.blue.opacity(0.1))
-        .cornerRadius(16)
+        .padding(24)
+        .card(backgroundColor: CleanerTheme.surface)
     }
 
     // MARK: - Results Card
 
     private func resultsCard(_ results: ScanCoordinator.ScanResults) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Last Scan Results")
-                        .font(.headline)
+                        .cleanerFont(.subtitle)
                     Text("Found \(results.statistics.totalDuplicates) items")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .cleanerFont(.caption)
                 }
 
                 Spacer()
@@ -177,121 +299,130 @@ struct DashboardView: View {
                     scanCoordinator.startScan()
                 }) {
                     Image(systemName: "arrow.clockwise")
-                        .font(.title3)
-                        .foregroundColor(.blue)
+                        .font(.title2)
+                        .foregroundColor(CleanerTheme.iconActive)
+                        .padding(12)
+                        .background(CleanerTheme.primary.opacity(0.2))
+                        .clipShape(Circle())
                 }
             }
 
             Divider()
+                .background(CleanerTheme.cardBackground)
 
             HStack(spacing: 20) {
                 VStack(spacing: 8) {
                     Text(results.formattedSavings)
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.blue)
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(CleanerTheme.accent)
                     Text("Potential Savings")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .cleanerFont(.caption)
                 }
+                .frame(maxWidth: .infinity)
 
                 Divider()
                     .frame(height: 40)
+                    .background(CleanerTheme.cardBackground)
 
                 VStack(spacing: 8) {
                     Text("\(results.totalPhotos)")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.green)
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(CleanerTheme.accentGreen)
                     Text("Photos Scanned")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .cleanerFont(.caption)
                 }
+                .frame(maxWidth: .infinity)
             }
 
             Button(action: {
                 showingSmartAlbums = true
             }) {
                 Text("View Smart Albums")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
-                    .cornerRadius(12)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [CleanerTheme.primary, Color(hex: "#0066DD")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(16)
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(radius: 4)
+        .padding(24)
+        .card(backgroundColor: CleanerTheme.surface)
     }
 
     // MARK: - Quick Stats
 
     private func quickStatsView(_ results: ScanCoordinator.ScanResults) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Categories")
-                .font(.headline)
+            Text("CATEGORIES")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(CleanerTheme.textSecondary)
+                .tracking(1.2)
 
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible())
-            ], spacing: 16) {
+            ], spacing: 12) {
                 StatCard(
-                    icon: "square.on.square",
+                    icon: "rectangle.on.rectangle.angled",
                     title: "Duplicates",
                     value: "\(results.statistics.totalDuplicates)",
-                    color: .blue
+                    color: CleanerTheme.iconPrimary
                 )
 
                 StatCard(
                     icon: "eye.slash",
                     title: "Blurry",
                     value: "\(results.blurryPhotos.count)",
-                    color: .orange
+                    color: CleanerTheme.iconPrimary
                 )
 
                 StatCard(
                     icon: "moon",
                     title: "Dark",
                     value: "\(results.darkPhotos.count)",
-                    color: .purple
+                    color: CleanerTheme.iconPrimary
                 )
 
                 StatCard(
                     icon: "camera.viewfinder",
                     title: "Screenshots",
                     value: "\(results.screenshots.count)",
-                    color: .green
+                    color: CleanerTheme.iconPrimary
                 )
 
                 StatCard(
-                    icon: "video.fill",
+                    icon: "film",
                     title: "Large Videos",
                     value: "\(results.largeVideos.count)",
-                    color: .red
+                    color: CleanerTheme.iconPrimary
                 )
 
                 StatCard(
-                    icon: "video.badge.plus",
+                    icon: "film.stack",
                     title: "Similar Videos",
                     value: "\(results.similarVideoGroups.reduce(0) { $0 + $1.videos.count })",
-                    color: .pink
+                    color: CleanerTheme.iconPrimary
                 )
 
                 StatCard(
                     icon: "arrow.down.circle",
                     title: "Optimizable",
                     value: "\(results.optimizablePhotos.count)",
-                    color: .cyan
+                    color: CleanerTheme.iconPrimary
                 )
 
                 StatCard(
                     icon: "doc.text",
                     title: "Documents",
                     value: "\(results.documents.count)",
-                    color: .indigo
+                    color: CleanerTheme.iconPrimary
                 )
 
                 // Contacts Card
@@ -299,10 +430,10 @@ struct DashboardView: View {
                     handleContactsCardTap(results: results)
                 }) {
                     StatCard(
-                        icon: "person.2.fill",
-                        title: "Duplicate Contacts",
+                        icon: "person.2",
+                        title: "Contacts",
                         value: "\(results.contactsResults?.totalDuplicates ?? 0)",
-                        color: .brown
+                        color: CleanerTheme.iconPrimary
                     )
                 }
                 .buttonStyle(.plain)
@@ -315,7 +446,7 @@ struct DashboardView: View {
                         icon: "calendar.badge.clock",
                         title: "Old Events",
                         value: "\(results.calendarResults?.totalCleanableEvents ?? 0)",
-                        color: .teal
+                        color: CleanerTheme.iconPrimary
                     )
                 }
                 .buttonStyle(.plain)
@@ -327,27 +458,31 @@ struct DashboardView: View {
 
     private var recentActivityView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Recent Activity")
-                .font(.headline)
+            Text("RECENT ACTIVITY")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(CleanerTheme.textSecondary)
+                .tracking(1.2)
 
             VStack(spacing: 12) {
                 ActivityRow(
                     icon: "checkmark.circle.fill",
                     title: "Scan completed",
                     subtitle: "Today at 10:30 AM",
-                    color: .green
+                    color: CleanerTheme.accentGreen
                 )
+
+                Divider()
+                    .background(CleanerTheme.cardBackground)
 
                 ActivityRow(
                     icon: "trash.circle.fill",
                     title: "Deleted 45 photos",
                     subtitle: "Yesterday",
-                    color: .red
+                    color: CleanerTheme.accentRed
                 )
             }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
+            .padding(20)
+            .card(backgroundColor: CleanerTheme.surface)
         }
     }
 
@@ -355,32 +490,38 @@ struct DashboardView: View {
 
     private var systemHealthView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("System Health")
-                .font(.headline)
+            Text("SYSTEM HEALTH")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(CleanerTheme.textSecondary)
+                .tracking(1.2)
 
             let health = SystemInsights.shared.calculateSystemHealth()
             let battery = SystemInsights.shared.getBatteryInfo()
             let storage = SystemInsights.shared.getStorageInfo()
 
             // Overall Health Score
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 16) {
-                    Image(systemName: health.statusIcon)
-                        .font(.largeTitle)
-                        .foregroundColor(colorForStatus(health.statusColor))
+                    ZStack {
+                        Circle()
+                            .fill(colorForStatus(health.statusColor).opacity(0.2))
+                            .frame(width: 60, height: 60)
+
+                        Image(systemName: health.statusIcon)
+                            .font(.title)
+                            .foregroundColor(colorForStatus(health.statusColor))
+                    }
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
                             Text("Grade: \(health.grade)")
-                                .font(.title)
-                                .fontWeight(.bold)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(CleanerTheme.textPrimary)
                             Text(gradeDescription(health.grade))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .cleanerFont(.caption)
                         }
                         Text("\(health.overallScore)% Overall Health")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .cleanerFont(.label)
                     }
 
                     Spacer()
@@ -388,21 +529,21 @@ struct DashboardView: View {
 
                 // Breakdown
                 HStack(spacing: 16) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Image(systemName: "battery.100")
                             .font(.caption)
+                            .foregroundColor(CleanerTheme.iconPrimary)
                         Text("Battery: \(health.batteryHealth)%")
-                            .font(.caption2)
+                            .cleanerFont(.caption)
                     }
-                    .foregroundColor(.secondary)
 
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Image(systemName: "internaldrive")
                             .font(.caption)
+                            .foregroundColor(CleanerTheme.iconPrimary)
                         Text("Storage: \(health.storageHealth)%")
-                            .font(.caption2)
+                            .cleanerFont(.caption)
                     }
-                    .foregroundColor(.secondary)
                 }
 
                 // Recommendation
@@ -410,69 +551,71 @@ struct DashboardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "lightbulb.fill")
                             .font(.caption)
-                            .foregroundColor(.orange)
+                            .foregroundColor(CleanerTheme.accent)
                         Text(recommendation)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .cleanerFont(.caption)
                     }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(CleanerTheme.accent.opacity(0.1))
+                    .cornerRadius(12)
                 }
             }
-            .padding()
-            .background(colorForStatus(health.statusColor).opacity(0.1))
-            .cornerRadius(12)
+            .padding(20)
+            .card(backgroundColor: CleanerTheme.surface)
 
             // Battery & Storage Grid
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 // Battery
                 VStack(spacing: 12) {
                     Image(systemName: battery.statusIcon)
-                        .font(.title)
+                        .font(.title2)
                         .foregroundColor(colorForStatus(battery.statusColor))
 
                     VStack(spacing: 4) {
                         Text("\(battery.percentage)%")
-                            .font(.title3)
-                            .fontWeight(.bold)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(CleanerTheme.textPrimary)
                         Text("Battery")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .cleanerFont(.caption)
                     }
 
                     if battery.isLowPowerModeEnabled {
-                        Text("Low Power Mode")
-                            .font(.caption2)
-                            .foregroundColor(.orange)
+                        Text("Low Power")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(CleanerTheme.accent)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(CleanerTheme.accent.opacity(0.2))
+                            .cornerRadius(6)
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(colorForStatus(battery.statusColor).opacity(0.1))
-                .cornerRadius(12)
+                .padding(16)
+                .card(backgroundColor: CleanerTheme.surface)
 
                 // Storage
                 if let storage = storage {
                     VStack(spacing: 12) {
                         Image(systemName: storage.statusIcon)
-                            .font(.title)
+                            .font(.title2)
                             .foregroundColor(colorForStatus(storage.statusColor))
 
                         VStack(spacing: 4) {
                             Text(storage.formatBytes(storage.freeSpace))
-                                .font(.title3)
-                                .fontWeight(.bold)
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(CleanerTheme.textPrimary)
                             Text("Available")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .cleanerFont(.caption)
                         }
 
                         Text("\(Int(storage.usagePercentage))% Used")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(CleanerTheme.textSecondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(colorForStatus(storage.statusColor).opacity(0.1))
-                    .cornerRadius(12)
+                    .padding(16)
+                    .card(backgroundColor: CleanerTheme.surface)
                 }
             }
         }
@@ -480,11 +623,11 @@ struct DashboardView: View {
 
     private func colorForStatus(_ status: String) -> Color {
         switch status {
-        case "green": return .green
-        case "orange": return .orange
-        case "red": return .red
-        case "blue": return .blue
-        default: return .gray
+        case "green": return CleanerTheme.accentGreen
+        case "orange": return CleanerTheme.accent
+        case "red": return CleanerTheme.accentRed
+        case "blue": return CleanerTheme.primary
+        default: return CleanerTheme.iconPrimary
         }
     }
 
@@ -519,10 +662,8 @@ struct DashboardView: View {
         let contactsAuth = ContactsCleaner.shared.checkAuthorizationStatus()
 
         if contactsAuth != .authorized {
-            // Show permission alert
             showingContactsPermissionAlert = true
         } else if let contactsResults = results.contactsResults, contactsResults.totalDuplicates > 0 {
-            // Navigate to contacts view
             showingSmartAlbums = true
         }
     }
@@ -531,23 +672,14 @@ struct DashboardView: View {
         let calendarAuth = CalendarCleaner.shared.checkAuthorizationStatus(for: .event)
 
         if calendarAuth != .authorized {
-            // Show permission alert
             showingCalendarPermissionAlert = true
         } else if let calendarResults = results.calendarResults, calendarResults.totalCleanableEvents > 0 {
-            // Navigate to calendar view
             showingSmartAlbums = true
         }
     }
-
-    // MARK: - Storage Recommendations
-
-    private var storageRecommendationsWidget: some View {
-        let storage = SystemInsights.shared.getStorageInfo()
-        return CompactRecommendationsWidget(storageInfo: storage)
-    }
 }
 
-// MARK: - Stat Card
+// MARK: - Stat Card (Dark Theme)
 
 struct StatCard: View {
     let icon: String
@@ -558,25 +690,26 @@ struct StatCard: View {
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.title)
+                .font(.title2)
                 .foregroundColor(color)
 
             Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(CleanerTheme.textPrimary)
 
             Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(CleanerTheme.textSecondary)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding()
-        .background(color.opacity(0.1))
-        .cornerRadius(12)
+        .padding(.vertical, 20)
+        .padding(.horizontal, 12)
+        .card(backgroundColor: CleanerTheme.surface)
     }
 }
 
-// MARK: - Activity Row
+// MARK: - Activity Row (Dark Theme)
 
 struct ActivityRow: View {
     let icon: String
@@ -587,14 +720,15 @@ struct ActivityRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
+                .font(.title3)
                 .foregroundColor(color)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.body)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(CleanerTheme.textPrimary)
                 Text(subtitle)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.caption)
             }
 
             Spacer()
