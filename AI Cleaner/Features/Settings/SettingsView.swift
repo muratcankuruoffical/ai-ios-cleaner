@@ -2,12 +2,11 @@
 //  SettingsView.swift
 //  AI Cleaner
 //
-//  Settings and preferences screen
+//  Settings and preferences screen - Dark Theme
 //
 
 import SwiftUI
 import CoreData
-internal import Combine
 
 struct SettingsView: View {
     @StateObject private var revenueCat = RevenueCatManager.shared
@@ -15,7 +14,11 @@ struct SettingsView: View {
     @State private var showingPaywall = false
 
     var body: some View {
-        List {
+        ZStack {
+            CleanerTheme.background
+                .ignoresSafeArea()
+
+            List {
             // Subscription Section
             Section {
                 if revenueCat.isProUser {
@@ -133,8 +136,12 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                 }
             }
+            }
+            .scrollContentBackground(.hidden)
+            .listStyle(.insetGrouped)
         }
         .navigationTitle("Settings")
+        .preferredColorScheme(.dark)
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
         }

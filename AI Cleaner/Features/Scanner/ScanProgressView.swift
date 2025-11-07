@@ -2,62 +2,66 @@
 //  ScanProgressView.swift
 //  AI Cleaner
 //
-//  View for displaying scan progress
+//  View for displaying scan progress - Dark Theme
 //
 
 import SwiftUI
-internal import Combine
 
 struct ScanProgressView: View {
     @ObservedObject var coordinator: ScanCoordinator
 
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
+        ZStack {
+            CleanerTheme.background
+                .ignoresSafeArea()
 
-            // Animated Icon
-            ProgressRingView(progress: coordinator.progress.percentage)
+            VStack(spacing: 32) {
+                Spacer()
 
-            VStack(spacing: 12) {
-                Text(coordinator.progress.currentStep)
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                // Animated Icon
+                ProgressRingView(progress: coordinator.progress.percentage)
 
-                Text("\(coordinator.progress.currentItemIndex) / \(coordinator.progress.totalItems)")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                VStack(spacing: 12) {
+                    Text(coordinator.progress.currentStep)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(CleanerTheme.textPrimary)
 
-                if coordinator.progress.percentage > 0 {
-                    Text(String(format: "%.0f%% Complete", coordinator.progress.percentage * 100))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Text("\(coordinator.progress.currentItemIndex) / \(coordinator.progress.totalItems)")
+                        .cleanerFont(.body)
+
+                    if coordinator.progress.percentage > 0 {
+                        Text(String(format: "%.0f%% Complete", coordinator.progress.percentage * 100))
+                            .cleanerFont(.caption)
+                    }
                 }
+
+                ProgressView(value: coordinator.progress.percentage)
+                    .progressViewStyle(.linear)
+                    .tint(CleanerTheme.primary)
+                    .frame(maxWidth: 300)
+
+                Spacer()
+
+                Button(action: {
+                    coordinator.cancelScan()
+                }) {
+                    Text("Cancel")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(CleanerTheme.accentRed)
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 12)
+                        .background(CleanerTheme.accentRed.opacity(0.15))
+                        .cornerRadius(12)
+                }
+                .padding(.bottom, 32)
             }
-
-            ProgressView(value: coordinator.progress.percentage)
-                .progressViewStyle(.linear)
-                .frame(maxWidth: 300)
-
-            Spacer()
-
-            Button(action: {
-                coordinator.cancelScan()
-            }) {
-                Text("Cancel")
-                    .fontWeight(.semibold)
-                    .foregroundColor(.red)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 12)
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(12)
-            }
-            .padding(.bottom, 32)
+            .padding()
         }
-        .padding()
+        .preferredColorScheme(.dark)
     }
 }
 
-// MARK: - Progress Ring
+// MARK: - Progress Ring (Dark Theme)
 
 struct ProgressRingView: View {
     let progress: Double
@@ -66,7 +70,7 @@ struct ProgressRingView: View {
         ZStack {
             // Background ring
             Circle()
-                .stroke(Color.gray.opacity(0.2), lineWidth: 12)
+                .stroke(CleanerTheme.surface, lineWidth: 12)
                 .frame(width: 120, height: 120)
 
             // Progress ring
@@ -74,7 +78,7 @@ struct ProgressRingView: View {
                 .trim(from: 0, to: progress)
                 .stroke(
                     LinearGradient(
-                        colors: [.blue, .purple],
+                        colors: [CleanerTheme.primary, CleanerTheme.accent],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
@@ -87,12 +91,12 @@ struct ProgressRingView: View {
             // Icon
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 40))
-                .foregroundColor(.blue)
+                .foregroundColor(CleanerTheme.primary)
         }
     }
 }
 
-// MARK: - Results View
+// MARK: - Results View (Dark Theme)
 
 struct ScanResultsView: View {
     let results: ScanCoordinator.ScanResults
@@ -100,106 +104,119 @@ struct ScanResultsView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 64))
-                            .foregroundColor(.green)
+            ZStack {
+                CleanerTheme.background
+                    .ignoresSafeArea()
 
-                        Text("Scan Complete!")
-                            .font(.title)
-                            .fontWeight(.bold)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(CleanerTheme.accentGreen.opacity(0.2))
+                                    .frame(width: 100, height: 100)
 
-                        Text("Found \(results.statistics.totalDuplicates) items to clean")
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 64))
+                                    .foregroundColor(CleanerTheme.accentGreen)
+                            }
+
+                            Text("Scan Complete!")
+                                .cleanerFont(.title)
+
+                            Text("Found \(results.statistics.totalDuplicates) items to clean")
+                                .cleanerFont(.body)
+                        }
+                        .padding(.top, 32)
+
+                        // Potential Savings Card
+                        VStack(spacing: 16) {
+                            Text("Potential Space Savings")
+                                .cleanerFont(.subtitle)
+
+                            Text(results.formattedSavings)
+                                .font(.system(size: 48, weight: .bold))
+                                .foregroundColor(CleanerTheme.accent)
+
+                            Text("by cleaning suggested items")
+                                .cleanerFont(.caption)
+                        }
+                        .padding(24)
+                        .frame(maxWidth: .infinity)
+                        .card(backgroundColor: CleanerTheme.surface)
+                        .padding(.horizontal)
+
+                        // Categories
+                        VStack(spacing: 12) {
+                            if !results.similarGroups.isEmpty {
+                                CategoryCard(
+                                    icon: "rectangle.on.rectangle.angled",
+                                    title: "Similar Photos",
+                                    count: results.statistics.totalDuplicates,
+                                    color: CleanerTheme.iconPrimary
+                                )
+                            }
+
+                            if !results.blurryPhotos.isEmpty {
+                                CategoryCard(
+                                    icon: "eye.slash",
+                                    title: "Blurry Photos",
+                                    count: results.blurryPhotos.count,
+                                    color: CleanerTheme.iconPrimary
+                                )
+                            }
+
+                            if !results.darkPhotos.isEmpty {
+                                CategoryCard(
+                                    icon: "moon",
+                                    title: "Dark Photos",
+                                    count: results.darkPhotos.count,
+                                    color: CleanerTheme.iconPrimary
+                                )
+                            }
+
+                            if !results.screenshots.isEmpty {
+                                CategoryCard(
+                                    icon: "camera.viewfinder",
+                                    title: "Screenshots",
+                                    count: results.screenshots.count,
+                                    color: CleanerTheme.iconPrimary
+                                )
+                            }
+
+                            if !results.largeVideos.isEmpty {
+                                CategoryCard(
+                                    icon: "film",
+                                    title: "Large Videos",
+                                    count: results.largeVideos.count,
+                                    color: CleanerTheme.iconPrimary
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+
+                        // Action Button
+                        Button(action: {
+                            showingResults = false
+                        }) {
+                            Text("Start Cleaning")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    LinearGradient(
+                                        colors: [CleanerTheme.primary, Color(hex: "#0066DD")],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(16)
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 32)
                     }
-                    .padding(.top, 32)
-
-                    // Potential Savings Card
-                    VStack(spacing: 16) {
-                        Text("Potential Space Savings")
-                            .font(.headline)
-
-                        Text(results.formattedSavings)
-                            .font(.system(size: 48, weight: .bold))
-                            .foregroundColor(.blue)
-
-                        Text("by cleaning suggested items")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(16)
-                    .padding(.horizontal)
-
-                    // Categories
-                    VStack(spacing: 16) {
-                        if !results.similarGroups.isEmpty {
-                            CategoryCard(
-                                icon: "square.on.square",
-                                title: "Similar Photos",
-                                count: results.statistics.totalDuplicates,
-                                color: .blue
-                            )
-                        }
-
-                        if !results.blurryPhotos.isEmpty {
-                            CategoryCard(
-                                icon: "eye.slash",
-                                title: "Blurry Photos",
-                                count: results.blurryPhotos.count,
-                                color: .orange
-                            )
-                        }
-
-                        if !results.darkPhotos.isEmpty {
-                            CategoryCard(
-                                icon: "moon",
-                                title: "Dark Photos",
-                                count: results.darkPhotos.count,
-                                color: .purple
-                            )
-                        }
-
-                        if !results.screenshots.isEmpty {
-                            CategoryCard(
-                                icon: "camera.viewfinder",
-                                title: "Screenshots",
-                                count: results.screenshots.count,
-                                color: .green
-                            )
-                        }
-
-                        if !results.largeVideos.isEmpty {
-                            CategoryCard(
-                                icon: "video.fill",
-                                title: "Large Videos",
-                                count: results.largeVideos.count,
-                                color: .red
-                            )
-                        }
-                    }
-                    .padding(.horizontal)
-
-                    // Action Button
-                    Button(action: {
-                        showingResults = false
-                    }) {
-                        Text("Start Cleaning")
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom, 32)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -208,13 +225,15 @@ struct ScanResultsView: View {
                     Button("Done") {
                         showingResults = false
                     }
+                    .foregroundColor(CleanerTheme.primary)
                 }
             }
+            .preferredColorScheme(.dark)
         }
     }
 }
 
-// MARK: - Category Card
+// MARK: - Category Card (Dark Theme)
 
 struct CategoryCard: View {
     let icon: String
@@ -231,20 +250,19 @@ struct CategoryCard: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(CleanerTheme.textPrimary)
                 Text("\(count) items found")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.caption)
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
-                .foregroundColor(.gray)
+                .foregroundColor(CleanerTheme.iconPrimary)
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(12)
+        .padding(16)
+        .card(backgroundColor: CleanerTheme.surface)
     }
 }
 
