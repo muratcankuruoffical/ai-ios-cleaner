@@ -176,17 +176,13 @@ struct SmartAlbumsView: View {
             DocumentsListView(documents: scanResults.documents)
         case .contacts:
             if let contactsResults = scanResults.contactsResults {
-                Text("Contacts cleanup view - Coming soon")
-                    .font(.headline)
-                // TODO: ContactsCleanupView(results: contactsResults)
+                ContactsCleanupView(results: contactsResults)
             } else {
                 Text("No contacts data available")
             }
         case .calendar:
             if let calendarResults = scanResults.calendarResults {
-                Text("Calendar cleanup view - Coming soon")
-                    .font(.headline)
-                // TODO: CalendarCleanupView(results: calendarResults)
+                CalendarCleanupView(results: calendarResults)
             } else {
                 Text("No calendar data available")
             }
