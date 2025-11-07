@@ -665,6 +665,7 @@ class ScanCoordinator: ObservableObject {
     // MARK: - Session Management
 
     private func saveScanSession(results: ScanResults, duration: TimeInterval) {
+        print("💾 [ScanCoordinator] Saving scan session - photos: \(results.totalPhotos)")
         let context = CoreDataStack.shared.newBackgroundContext()
 
         context.perform {
@@ -676,6 +677,7 @@ class ScanCoordinator: ObservableObject {
             session.processedCount = Int32(results.totalPhotos)
             session.deletedCount = 0
             session.freedBytes = 0
+            print("💾 [ScanCoordinator] ScanSession created")
 
             // Create activity log for scan completion
             ActivityLog.createScanActivity(
@@ -684,7 +686,9 @@ class ScanCoordinator: ObservableObject {
                 timestamp: Date()
             )
 
+            print("💾 [ScanCoordinator] Saving context...")
             CoreDataStack.shared.save(context: context)
+            print("💾 [ScanCoordinator] Context saved successfully")
         }
     }
 }

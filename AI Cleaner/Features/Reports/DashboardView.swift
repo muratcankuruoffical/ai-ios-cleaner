@@ -478,6 +478,7 @@ struct DashboardView: View {
                 .tracking(1.2)
 
             if recentActivities.isEmpty {
+                let _ = print("📊 [Dashboard] Recent activities is EMPTY - count: 0")
                 // Empty state
                 VStack(spacing: 12) {
                     Image(systemName: "clock")
@@ -491,6 +492,10 @@ struct DashboardView: View {
                 .padding(32)
                 .card(backgroundColor: CleanerTheme.surface)
             } else {
+                let _ = print("📊 [Dashboard] Recent activities FOUND - count: \(recentActivities.count)")
+                let _ = recentActivities.prefix(5).forEach { activity in
+                    print("   - Activity: \(activity.displayTitle) at \(activity.timestamp?.description ?? "nil")")
+                }
                 VStack(spacing: 12) {
                     ForEach(Array(recentActivities.prefix(5).enumerated()), id: \.element.id) { index, activity in
                         if index > 0 {

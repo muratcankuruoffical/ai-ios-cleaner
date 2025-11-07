@@ -98,6 +98,7 @@ public class ActivityLog: NSManagedObject {
         photoCount: Int,
         timestamp: Date = Date()
     ) -> ActivityLog {
+        print("📊 [ActivityLog] Creating scan activity - photoCount: \(photoCount)")
         let activity = ActivityLog(context: context)
         activity.id = UUID()
         activity.type = ActivityType.scanCompleted.rawValue
@@ -105,6 +106,7 @@ public class ActivityLog: NSManagedObject {
         activity.timestamp = timestamp
         activity.freedBytes = 0
         activity.category = nil
+        print("📊 [ActivityLog] Scan activity created - ID: \(activity.id?.uuidString ?? "nil")")
         return activity
     }
 
@@ -116,6 +118,7 @@ public class ActivityLog: NSManagedObject {
         category: String,
         timestamp: Date = Date()
     ) -> ActivityLog {
+        print("📊 [ActivityLog] Creating delete activity - count: \(count), bytes: \(freedBytes), category: \(category)")
         let activity = ActivityLog(context: context)
         activity.id = UUID()
         activity.type = ActivityType.photosDeleted.rawValue
@@ -123,6 +126,7 @@ public class ActivityLog: NSManagedObject {
         activity.freedBytes = freedBytes
         activity.category = category
         activity.timestamp = timestamp
+        print("📊 [ActivityLog] Delete activity created - ID: \(activity.id?.uuidString ?? "nil")")
         return activity
     }
 

@@ -37,11 +37,17 @@ final class CoreDataStack {
 
     func save(context: NSManagedObjectContext? = nil) {
         let ctx = context ?? viewContext
-        guard ctx.hasChanges else { return }
+        guard ctx.hasChanges else {
+            print("💾 [CoreDataStack] No changes to save")
+            return
+        }
 
+        print("💾 [CoreDataStack] Saving context with changes...")
         do {
             try ctx.save()
+            print("✅ [CoreDataStack] Context saved successfully")
         } catch {
+            print("❌ [CoreDataStack] Save failed: \(error.localizedDescription)")
             // Save failed - data loss possible
         }
     }

@@ -515,16 +515,19 @@ class SwipeDeckViewModel: ObservableObject {
     }
 
     func performDeletion() async {
+        print("🗑️ [SwipeDeck] Starting deletion - count: \(toDelete.count), category: \(category)")
         AnalyticsManager.shared.logCleanupStarted(itemCount: toDelete.count, category: category)
 
         do {
             try await PhotoLibraryService.shared.delete(assets: toDelete)
+            print("🗑️ [SwipeDeck] Photos deleted successfully")
 
             // Calculate freed space (approximate)
             var freedBytes: Int64 = 0
             for asset in toDelete {
                 freedBytes += await PhotoLibraryService.shared.getAssetSize(for: asset)
             }
+            print("🗑️ [SwipeDeck] Freed bytes calculated: \(freedBytes)")
 
             AnalyticsManager.shared.logCleanupCompleted(
                 itemCount: toDelete.count,
@@ -534,6 +537,7 @@ class SwipeDeckViewModel: ObservableObject {
 
             // Log activity to CoreData
             await MainActor.run {
+                print("🗑️ [SwipeDeck] Creating ActivityLog on MainActor")
                 let context = CoreDataStack.shared.viewContext
                 ActivityLog.createDeleteActivity(
                     context: context,
@@ -542,11 +546,14 @@ class SwipeDeckViewModel: ObservableObject {
                     category: category,
                     timestamp: Date()
                 )
+                print("🗑️ [SwipeDeck] Saving context...")
                 CoreDataStack.shared.save(context: context)
+                print("🗑️ [SwipeDeck] Context saved successfully")
             }
 
             toDelete.removeAll()
         } catch {
+            print("❌ [SwipeDeck] Deletion error: \(error.localizedDescription)")
             lastError = error
             showingError = true
             AnalyticsManager.shared.logError(error, context: "deletion")
