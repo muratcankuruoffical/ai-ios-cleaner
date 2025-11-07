@@ -246,63 +246,72 @@ struct SwipeCardView: View {
     private let swipeThreshold: CGFloat = 80
     private let velocityThreshold: CGFloat = 1000
 
+    // Calculate optimal card height based on screen size
+    private var cardHeight: CGFloat {
+        let screenHeight = UIScreen.main.bounds.height
+        // Use 60% of screen height, max 600, min 400
+        return min(max(screenHeight * 0.6, 400), 600)
+    }
+
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Card Background
-            RoundedRectangle(cornerRadius: 20)
-                .fill(CleanerTheme.surface)
-                .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 6)
+        GeometryReader { geometry in
+            ZStack(alignment: .topLeading) {
+                // Card Background
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(CleanerTheme.surface)
+                    .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 6)
 
-            // Image
-            if let image = image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-                    .cornerRadius(20)
-            } else {
-                ZStack {
-                    CleanerTheme.cardBackground
+                // Image
+                if let image = image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: geometry.size.width, height: cardHeight)
+                        .clipped()
                         .cornerRadius(20)
+                } else {
+                    ZStack {
+                        CleanerTheme.cardBackground
+                            .cornerRadius(20)
 
-                    ProgressView()
-                        .tint(CleanerTheme.primary)
+                        ProgressView()
+                            .tint(CleanerTheme.primary)
+                    }
+                    .frame(width: geometry.size.width, height: cardHeight)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
 
-            // Gradient Overlay
-            LinearGradient(
-                colors: [Color.clear, CleanerTheme.background.opacity(0.8)],
-                startPoint: .center,
-                endPoint: .bottom
+                // Gradient Overlay
+                LinearGradient(
+                    colors: [Color.clear, CleanerTheme.background.opacity(0.8)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+                .cornerRadius(20)
+
+                // Swipe Indicators
+                if isTop {
+                    swipeIndicators
+                }
+
+                // Info Overlay
+                infoOverlay
+            }
+            .frame(width: geometry.size.width, height: cardHeight)
+            .offset(x: offset.width, y: 0)
+            .rotationEffect(.degrees(rotation))
+            .gesture(
+                isTop ? DragGesture()
+                    .onChanged { gesture in
+                        offset = gesture.translation
+                        rotation = Double(gesture.translation.width / 20)
+                    }
+                    .onEnded { gesture in
+                        handleDragEnd(gesture)
+                    } : nil
             )
-            .cornerRadius(20)
-
-            // Swipe Indicators
-            if isTop {
-                swipeIndicators
-            }
-
-            // Info Overlay
-            infoOverlay
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: offset)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 500)
-        .offset(x: offset.width, y: 0)
-        .rotationEffect(.degrees(rotation))
-        .gesture(
-            isTop ? DragGesture()
-                .onChanged { gesture in
-                    offset = gesture.translation
-                    rotation = Double(gesture.translation.width / 20)
-                }
-                .onEnded { gesture in
-                    handleDragEnd(gesture)
-                } : nil
-        )
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: offset)
+        .frame(height: cardHeight)
         .task {
             await loadImage()
         }

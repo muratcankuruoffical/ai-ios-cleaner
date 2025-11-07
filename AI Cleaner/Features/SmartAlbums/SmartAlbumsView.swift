@@ -210,21 +210,25 @@ struct SmartAlbumsView: View {
         switch type {
         case .duplicates:
             DuplicatesAlbumView(groups: filteredSimilarGroups)
+                .environmentObject(scanCoordinator)
         case .blurry:
             SimplePhotoListView(
                 photos: filteredBlurryPhotos.map { $0.asset },
                 title: "Blurry Photos"
             )
+            .environmentObject(scanCoordinator)
         case .dark:
             SimplePhotoListView(
                 photos: filteredDarkPhotos.map { $0.asset },
                 title: "Dark Photos"
             )
+            .environmentObject(scanCoordinator)
         case .screenshots:
             SimplePhotoListView(
                 photos: filteredScreenshots,
                 title: "Screenshots"
             )
+            .environmentObject(scanCoordinator)
         case .largeVideos:
             LargeVideosListView(videos: filteredLargeVideos)
         case .similarVideos:
@@ -330,6 +334,7 @@ struct AlbumRow: View {
 
 struct DuplicatesAlbumView: View {
     let groups: [SimilarityService.SimilarityGroup]
+    @EnvironmentObject var scanCoordinator: ScanCoordinator
     @State private var selectedGroup: SimilarityService.SimilarityGroup?
 
     var body: some View {
@@ -343,6 +348,7 @@ struct DuplicatesAlbumView: View {
         .sheet(item: $selectedGroup) { group in
             NavigationView {
                 SwipeDeckView(assets: group.assets, category: "Duplicates")
+                    .environmentObject(scanCoordinator)
             }
         }
     }
@@ -381,19 +387,30 @@ struct GroupRow: View {
 struct SimplePhotoListView: View {
     let photos: [PHAsset]
     let title: String
+    @State private var showingReviewDeck = false
+    @EnvironmentObject var scanCoordinator: ScanCoordinator
 
     var body: some View {
         VStack {
             Button(action: {
-                // Navigate to swipe deck
+                showingReviewDeck = true
             }) {
-                Text("Review All")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                HStack {
+                    Image(systemName: "hand.thumbsup.fill")
+                    Text("Review All")
+                }
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    LinearGradient(
+                        colors: [Color(hex: "#0088FF"), Color(hex: "#0066DD")],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .foregroundColor(.white)
+                .cornerRadius(12)
             }
             .padding()
 
@@ -408,6 +425,12 @@ struct SimplePhotoListView: View {
             }
         }
         .navigationTitle(title)
+        .sheet(isPresented: $showingReviewDeck) {
+            NavigationView {
+                SwipeDeckView(assets: photos, category: title)
+                    .environmentObject(scanCoordinator)
+            }
+        }
     }
 }
 
