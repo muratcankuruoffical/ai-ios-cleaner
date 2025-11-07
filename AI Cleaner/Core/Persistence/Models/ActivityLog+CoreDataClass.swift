@@ -1,0 +1,137 @@
+//
+//  ActivityLog+CoreDataClass.swift
+//  AI Cleaner
+//
+//  Core Data entity class for ActivityLog
+//
+
+import Foundation
+import CoreData
+
+@objc(ActivityLog)
+public class ActivityLog: NSManagedObject {
+
+    // MARK: - Activity Types
+
+    enum ActivityType: String {
+        case scanCompleted = "scan_completed"
+        case photosDeleted = "photos_deleted"
+        case cacheCleared = "cache_cleared"
+        case optimizationCompleted = "optimization_completed"
+    }
+
+    // MARK: - Helper Methods
+
+    var activityType: ActivityType? {
+        guard let type = type else { return nil }
+        return ActivityType(rawValue: type)
+    }
+
+    var formattedItemCount: String {
+        let count = Int(itemCount)
+        if count == 0 { return "" }
+
+        switch activityType {
+        case .scanCompleted:
+            return "\(count) photos"
+        case .photosDeleted:
+            return "\(count) photos"
+        case .cacheCleared:
+            return formatBytes(Int64(freedBytes))
+        case .optimizationCompleted:
+            return "\(count) photos"
+        case .none:
+            return "\(count) items"
+        }
+    }
+
+    var displayTitle: String {
+        switch activityType {
+        case .scanCompleted:
+            return "Scan completed"
+        case .photosDeleted:
+            return "Deleted \(itemCount) photos"
+        case .cacheCleared:
+            return "Cache cleared"
+        case .optimizationCompleted:
+            return "Optimized \(itemCount) photos"
+        case .none:
+            return "Activity completed"
+        }
+    }
+
+    var iconName: String {
+        switch activityType {
+        case .scanCompleted:
+            return "checkmark.circle.fill"
+        case .photosDeleted:
+            return "trash.circle.fill"
+        case .cacheCleared:
+            return "arrow.clockwise.circle.fill"
+        case .optimizationCompleted:
+            return "wand.and.stars.fill"
+        case .none:
+            return "circle.fill"
+        }
+    }
+
+    var iconColor: String {
+        switch activityType {
+        case .scanCompleted:
+            return "green"
+        case .photosDeleted:
+            return "red"
+        case .cacheCleared:
+            return "blue"
+        case .optimizationCompleted:
+            return "purple"
+        case .none:
+            return "gray"
+        }
+    }
+
+    // MARK: - Factory Methods
+
+    @discardableResult
+    static func createScanActivity(
+        context: NSManagedObjectContext,
+        photoCount: Int,
+        timestamp: Date = Date()
+    ) -> ActivityLog {
+        let activity = ActivityLog(context: context)
+        activity.id = UUID()
+        activity.type = ActivityType.scanCompleted.rawValue
+        activity.itemCount = Int32(photoCount)
+        activity.timestamp = timestamp
+        activity.freedBytes = 0
+        activity.category = nil
+        return activity
+    }
+
+    @discardableResult
+    static func createDeleteActivity(
+        context: NSManagedObjectContext,
+        count: Int,
+        freedBytes: Int64,
+        category: String,
+        timestamp: Date = Date()
+    ) -> ActivityLog {
+        let activity = ActivityLog(context: context)
+        activity.id = UUID()
+        activity.type = ActivityType.photosDeleted.rawValue
+        activity.itemCount = Int32(count)
+        activity.freedBytes = freedBytes
+        activity.category = category
+        activity.timestamp = timestamp
+        return activity
+    }
+
+    // MARK: - Formatting
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useGB, .useMB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
+    }
+}

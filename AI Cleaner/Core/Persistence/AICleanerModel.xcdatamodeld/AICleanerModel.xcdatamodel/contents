@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24299" systemVersion="25A362" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+    <entity name="ActivityLog" representedClassName="ActivityLog" syncable="YES">
+        <attribute name="category" optional="YES" attributeType="String"/>
+        <attribute name="freedBytes" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="itemCount" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+    </entity>
     <entity name="AssetFingerprint" representedClassName="AssetFingerprint" syncable="YES">
         <attribute name="assetLocalId" optional="YES" attributeType="String"/>
         <attribute name="blurScore" optional="YES" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>

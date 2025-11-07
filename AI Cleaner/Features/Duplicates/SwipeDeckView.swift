@@ -532,6 +532,19 @@ class SwipeDeckViewModel: ObservableObject {
                 bytesFreed: freedBytes
             )
 
+            // Log activity to CoreData
+            await MainActor.run {
+                let context = CoreDataStack.shared.viewContext
+                ActivityLog.createDeleteActivity(
+                    context: context,
+                    count: toDelete.count,
+                    freedBytes: freedBytes,
+                    category: category,
+                    timestamp: Date()
+                )
+                CoreDataStack.shared.save(context: context)
+            }
+
             toDelete.removeAll()
         } catch {
             lastError = error

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Charts
+import CoreData
 internal import EventKit
 internal import Combine
 
@@ -18,6 +19,13 @@ struct DashboardView: View {
     @State private var showingContactsPermissionAlert = false
     @State private var showingCalendarPermissionAlert = false
     @State private var animateContent = false
+
+    // Fetch recent activities from CoreData
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \ActivityLog.timestamp, ascending: false)],
+        predicate: nil,
+        animation: .default
+    ) var recentActivities: FetchedResults<ActivityLog>
 
     var body: some View {
         NavigationView {
@@ -469,26 +477,48 @@ struct DashboardView: View {
                 .foregroundColor(CleanerTheme.textSecondary)
                 .tracking(1.2)
 
-            VStack(spacing: 12) {
-                ActivityRow(
-                    icon: "checkmark.circle.fill",
-                    title: "Scan completed",
-                    subtitle: "Today at 10:30 AM",
-                    color: CleanerTheme.accentGreen
-                )
+            if recentActivities.isEmpty {
+                // Empty state
+                VStack(spacing: 12) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 32))
+                        .foregroundColor(CleanerTheme.iconPrimary.opacity(0.5))
+                    Text("No recent activity")
+                        .cleanerFont(.body)
+                        .foregroundColor(CleanerTheme.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(32)
+                .card(backgroundColor: CleanerTheme.surface)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(Array(recentActivities.prefix(5).enumerated()), id: \.element.id) { index, activity in
+                        if index > 0 {
+                            Divider()
+                                .background(CleanerTheme.cardBackground)
+                        }
 
-                Divider()
-                    .background(CleanerTheme.cardBackground)
-
-                ActivityRow(
-                    icon: "trash.circle.fill",
-                    title: "Deleted 45 photos",
-                    subtitle: "Yesterday",
-                    color: CleanerTheme.accentRed
-                )
+                        ActivityRow(
+                            icon: activity.iconName,
+                            title: activity.displayTitle,
+                            subtitle: activity.timestamp?.relativeFormatted() ?? "Unknown",
+                            color: colorForActivity(activity.iconColor)
+                        )
+                    }
+                }
+                .padding(20)
+                .card(backgroundColor: CleanerTheme.surface)
             }
-            .padding(20)
-            .card(backgroundColor: CleanerTheme.surface)
+        }
+    }
+
+    private func colorForActivity(_ colorName: String) -> Color {
+        switch colorName {
+        case "green": return CleanerTheme.accentGreen
+        case "red": return CleanerTheme.accentRed
+        case "blue": return CleanerTheme.primary
+        case "purple": return Color.purple
+        default: return CleanerTheme.iconPrimary
         }
     }
 

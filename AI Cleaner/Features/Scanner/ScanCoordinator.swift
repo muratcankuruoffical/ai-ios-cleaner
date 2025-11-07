@@ -668,6 +668,7 @@ class ScanCoordinator: ObservableObject {
         let context = CoreDataStack.shared.newBackgroundContext()
 
         context.perform {
+            // Save scan session
             let session = ScanSession(context: context)
             session.id = results.sessionId
             session.startedAt = Date().addingTimeInterval(-duration)
@@ -675,6 +676,13 @@ class ScanCoordinator: ObservableObject {
             session.processedCount = Int32(results.totalPhotos)
             session.deletedCount = 0
             session.freedBytes = 0
+
+            // Create activity log for scan completion
+            ActivityLog.createScanActivity(
+                context: context,
+                photoCount: results.totalPhotos,
+                timestamp: Date()
+            )
 
             CoreDataStack.shared.save(context: context)
         }
