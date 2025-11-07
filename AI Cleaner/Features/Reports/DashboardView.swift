@@ -40,11 +40,9 @@ struct DashboardView: View {
                         // Header
                         headerView
 
-                        // Storage Donut Chart (if scan completed)
-                        if let results = scanCoordinator.scanResults {
-                            storageDonutCard(results)
-                                .transition(.scale.combined(with: .opacity))
-                        }
+                        // Storage Donut Chart
+                        storageDonutCard(scanCoordinator.scanResults)
+                            .transition(.scale.combined(with: .opacity))
 
                         // Scan Button or Results
                         if let results = scanCoordinator.scanResults {
@@ -171,9 +169,9 @@ struct DashboardView: View {
 
     // MARK: - Storage Donut Card
 
-    private func storageDonutCard(_ results: ScanCoordinator.ScanResults) -> some View {
+    private func storageDonutCard(_ results: ScanCoordinator.ScanResults?) -> some View {
         let storage = SystemInsights.shared.getStorageInfo()
-        let potentialSavingsBytes = results.statistics.potentialSavingsBytes
+        let potentialSavingsBytes = results?.statistics.potentialSavingsBytes ?? 0
         let potentialSavingsGB = Double(potentialSavingsBytes) / 1_073_741_824 // Convert to GB
 
         return VStack(spacing: 20) {
@@ -248,22 +246,25 @@ struct DashboardView: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 50)
 
-                    Divider()
-                        .frame(height: 40)
-                        .background(CleanerTheme.surface)
+                    // Can Save - only show if scan results exist
+                    if results != nil {
+                        Divider()
+                            .frame(height: 40)
+                            .background(CleanerTheme.surface)
 
-                    VStack(spacing: 4) {
-                        Text(String(format: "%.1f GB", potentialSavingsGB))
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(CleanerTheme.accent)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .multilineTextAlignment(.center)
-                        Text("Can Save")
-                            .cleanerFont(.caption)
-                            .lineLimit(1)
+                        VStack(spacing: 4) {
+                            Text(String(format: "%.1f GB", potentialSavingsGB))
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(CleanerTheme.accent)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .multilineTextAlignment(.center)
+                            Text("Can Save")
+                                .cleanerFont(.caption)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 50)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 50)
                 }
             }
         }
