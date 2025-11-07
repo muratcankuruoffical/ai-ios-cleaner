@@ -271,6 +271,24 @@ struct DashboardView: View {
                     value: "\(results.documents.count)",
                     color: .indigo
                 )
+
+                if let contactsResults = results.contactsResults {
+                    StatCard(
+                        icon: "person.2.fill",
+                        title: "Duplicate Contacts",
+                        value: "\(contactsResults.totalDuplicates)",
+                        color: .brown
+                    )
+                }
+
+                if let calendarResults = results.calendarResults {
+                    StatCard(
+                        icon: "calendar.badge.clock",
+                        title: "Old Events",
+                        value: "\(calendarResults.totalCleanableEvents)",
+                        color: .teal
+                    )
+                }
             }
         }
     }

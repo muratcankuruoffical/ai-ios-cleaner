@@ -110,6 +110,32 @@ struct SmartAlbumsView: View {
                         selectedAlbum = .documents
                     }
                 }
+
+                if let contactsResults = scanResults.contactsResults,
+                   contactsResults.totalDuplicates > 0 {
+                    AlbumRow(
+                        type: .contacts,
+                        count: contactsResults.totalDuplicates,
+                        icon: "person.2.fill",
+                        color: .brown
+                    )
+                    .onTapGesture {
+                        selectedAlbum = .contacts
+                    }
+                }
+
+                if let calendarResults = scanResults.calendarResults,
+                   calendarResults.totalCleanableEvents > 0 {
+                    AlbumRow(
+                        type: .calendar,
+                        count: calendarResults.totalCleanableEvents,
+                        icon: "calendar.badge.clock",
+                        color: .teal
+                    )
+                    .onTapGesture {
+                        selectedAlbum = .calendar
+                    }
+                }
             }
         }
         .navigationTitle("Smart Albums")
@@ -148,6 +174,22 @@ struct SmartAlbumsView: View {
             PhotoOptimizationView(photos: scanResults.optimizablePhotos)
         case .documents:
             DocumentsListView(documents: scanResults.documents)
+        case .contacts:
+            if let contactsResults = scanResults.contactsResults {
+                Text("Contacts cleanup view - Coming soon")
+                    .font(.headline)
+                // TODO: ContactsCleanupView(results: contactsResults)
+            } else {
+                Text("No contacts data available")
+            }
+        case .calendar:
+            if let calendarResults = scanResults.calendarResults {
+                Text("Calendar cleanup view - Coming soon")
+                    .font(.headline)
+                // TODO: CalendarCleanupView(results: calendarResults)
+            } else {
+                Text("No calendar data available")
+            }
         }
     }
 }
@@ -163,6 +205,8 @@ enum AlbumType: Identifiable {
     case similarVideos
     case optimizable
     case documents
+    case contacts
+    case calendar
 
     var id: String {
         switch self {
@@ -174,6 +218,8 @@ enum AlbumType: Identifiable {
         case .similarVideos: return "similarVideos"
         case .optimizable: return "optimizable"
         case .documents: return "documents"
+        case .contacts: return "contacts"
+        case .calendar: return "calendar"
         }
     }
 
@@ -187,6 +233,8 @@ enum AlbumType: Identifiable {
         case .similarVideos: return "Similar Videos"
         case .optimizable: return "Optimizable Photos"
         case .documents: return "Documents & IDs"
+        case .contacts: return "Duplicate Contacts"
+        case .calendar: return "Old Events"
         }
     }
 }
@@ -1152,6 +1200,8 @@ extension DocumentDetector.DocumentType: Identifiable {
                 similarVideoGroups: [],
                 optimizablePhotos: [],
                 documents: [],
+                contactsResults: nil,
+                calendarResults: nil,
                 potentialSavingsBytes: 2_500_000_000,
                 statistics: CleanupStatistics(
                     totalGroups: 25,

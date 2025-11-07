@@ -30,6 +30,8 @@ class ScanCoordinator: ObservableObject {
     private let videoAnalyzer = VideoAnalyzer.shared
     private let photoOptimizer = PhotoOptimizer.shared
     private let documentDetector = DocumentDetector.shared
+    private let contactsCleaner = ContactsCleaner.shared
+    private let calendarCleaner = CalendarCleaner.shared
 
     // MARK: - State
 
@@ -85,6 +87,8 @@ class ScanCoordinator: ObservableObject {
         let similarVideoGroups: [VideoAnalyzer.SimilarVideoGroup]
         let optimizablePhotos: [PhotoOptimizer.OptimizablePhoto]
         let documents: [DocumentDetector.DocumentDetectionResult]
+        let contactsResults: ContactsCleaner.ContactsScanResults?
+        let calendarResults: CalendarCleaner.CalendarScanResults?
 
         // Statistics
         let potentialSavingsBytes: Int64
@@ -378,6 +382,43 @@ class ScanCoordinator: ObservableObject {
 
         try Task.checkCancellation()
 
+        // Step 5e: Scan contacts (optional - only if authorized)
+        var contactsResults: ContactsCleaner.ContactsScanResults? = nil
+        if contactsCleaner.checkAuthorizationStatus() == .authorized {
+            updateProgress(step: "Scanning contacts...", current: 0, total: 100)
+
+            contactsResults = await contactsCleaner.scanContacts { [self] current, total in
+                self.updateProgress(step: "Scanning contacts...", current: current, total: total)
+            }
+
+            print("\n📇 CONTACTS SCAN:")
+            print("   Duplicate groups: \(contactsResults?.duplicateGroups.count ?? 0)")
+            print("   Total duplicates: \(contactsResults?.totalDuplicates ?? 0)")
+        } else {
+            print("\n📇 CONTACTS: Skipped (not authorized)")
+        }
+
+        try Task.checkCancellation()
+
+        // Step 5f: Scan calendar (optional - only if authorized)
+        var calendarResults: CalendarCleaner.CalendarScanResults? = nil
+        if calendarCleaner.checkAuthorizationStatus(for: .event) == .authorized {
+            updateProgress(step: "Scanning calendar...", current: 0, total: 100)
+
+            calendarResults = await calendarCleaner.scanCalendar { [self] current, total in
+                self.updateProgress(step: "Scanning calendar...", current: current, total: total)
+            }
+
+            print("\n📅 CALENDAR SCAN:")
+            print("   Past events: \(calendarResults?.pastEvents.count ?? 0)")
+            print("   Duplicate groups: \(calendarResults?.duplicateGroups.count ?? 0)")
+            print("   Completed reminders: \(calendarResults?.completedReminders.count ?? 0)")
+        } else {
+            print("\n📅 CALENDAR: Skipped (not authorized)")
+        }
+
+        try Task.checkCancellation()
+
         // Step 6: Calculate statistics
         updateProgress(step: "Calculating savings...", current: 99, total: 100)
 
@@ -429,6 +470,8 @@ class ScanCoordinator: ObservableObject {
             similarVideoGroups: similarVideoGroups,
             optimizablePhotos: optimizablePhotos,
             documents: documents,
+            contactsResults: contactsResults,
+            calendarResults: calendarResults,
             potentialSavingsBytes: totalSavings,
             statistics: statistics
         )
