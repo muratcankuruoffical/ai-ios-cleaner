@@ -19,9 +19,11 @@ final class CoreDataStack {
             if let error = error {
                 fatalError("Unable to load persistent stores: \(error)")
             }
+            print("✅ [CoreDataStack] Persistent store loaded: \(description.url?.lastPathComponent ?? "unknown")")
         }
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        print("✅ [CoreDataStack] ViewContext configured with automatic merge")
         return container
     }()
 

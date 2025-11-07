@@ -12,6 +12,7 @@ internal import EventKit
 internal import Combine
 
 struct DashboardView: View {
+    @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var scanCoordinator = ScanCoordinator()
     @State private var showingScanProgress = false
     @State private var showingResults = false
@@ -144,6 +145,11 @@ struct DashboardView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear {
+            // Debug: Check if context is properly connected
+            print("🔍 [Dashboard] ViewContext: \(viewContext)")
+            print("🔍 [Dashboard] Context has coordinator: \(viewContext.persistentStoreCoordinator != nil)")
+            print("🔍 [Dashboard] Recent activities count: \(recentActivities.count)")
+
             withAnimation(.easeOut(duration: 0.6)) {
                 animateContent = true
             }

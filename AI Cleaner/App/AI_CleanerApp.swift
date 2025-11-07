@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreData
 internal import Combine
 
 @main
@@ -20,6 +21,7 @@ struct AI_CleanerApp: App {
     var body: some Scene {
         WindowGroup {
             AppRouter(appState: appState)
+                .environment(\.managedObjectContext, CoreDataStack.shared.viewContext)
         }
     }
 
