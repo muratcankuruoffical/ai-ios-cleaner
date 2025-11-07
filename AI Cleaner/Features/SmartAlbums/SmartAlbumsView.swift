@@ -15,7 +15,7 @@ struct SmartAlbumsView: View {
 
     // Filter deleted assets from results
     private var filteredSimilarGroups: [SimilarityService.SimilarityGroup] {
-        scanResults.similarGroups.compactMap { group in
+        scanResults.similarGroups.compactMap { group -> SimilarityService.SimilarityGroup? in
             let remaining = group.assets.filter { !scanCoordinator.deletedAssetIds.contains($0.localIdentifier) }
             guard remaining.count > 1 else { return nil } // Need at least 2 photos for similarity
             return SimilarityService.SimilarityGroup(id: group.id, assets: remaining, score: group.score)
@@ -39,7 +39,7 @@ struct SmartAlbumsView: View {
     }
 
     private var filteredSimilarVideoGroups: [VideoAnalyzer.SimilarVideoGroup] {
-        scanResults.similarVideoGroups.compactMap { group in
+        scanResults.similarVideoGroups.compactMap { group -> VideoAnalyzer.SimilarVideoGroup? in
             let remaining = group.videos.filter { !scanCoordinator.deletedAssetIds.contains($0.asset.localIdentifier) }
             guard remaining.count > 1 else { return nil }
             return VideoAnalyzer.SimilarVideoGroup(videos: remaining, similarity: group.similarity)
