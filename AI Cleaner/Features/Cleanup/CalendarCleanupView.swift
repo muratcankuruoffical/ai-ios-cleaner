@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import EventKit
+internal import EventKit
 
 struct CalendarCleanupView: View {
     let results: CalendarCleaner.CalendarScanResults

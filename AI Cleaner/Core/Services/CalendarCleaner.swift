@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import EventKit
+internal import EventKit
 
 final class CalendarCleaner {
     static let shared = CalendarCleaner()

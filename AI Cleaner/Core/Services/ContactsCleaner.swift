@@ -92,7 +92,7 @@ final class ContactsCleaner {
             if !contact.phoneNumbers.isEmpty { score += 10 }
             if !contact.emailAddresses.isEmpty { score += 10 }
             if !contact.postalAddresses.isEmpty { score += 5 }
-            if !contact.birthday?.description.isEmpty ?? false { score += 5 }
+            if ((contact.birthday?.description.isEmpty) == nil) ?? false { score += 5 }
             if !contact.organizationName.isEmpty { score += 3 }
             if !contact.note.isEmpty { score += 2 }
             if contact.imageDataAvailable { score += 5 }

@@ -10,6 +10,7 @@ import Photos
 import CoreData
 import UIKit
 internal import Combine
+internal import EventKit
 
 @MainActor
 class ScanCoordinator: ObservableObject {
