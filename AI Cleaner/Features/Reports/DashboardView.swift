@@ -34,6 +34,9 @@ struct DashboardView: View {
                         quickStatsView(results)
                     }
 
+                    // Additional Categories (Always Visible)
+                    additionalCategoriesView
+
                     // Recent Activity
                     recentActivityView
 
@@ -271,24 +274,6 @@ struct DashboardView: View {
                     value: "\(results.documents.count)",
                     color: .indigo
                 )
-
-                if let contactsResults = results.contactsResults {
-                    StatCard(
-                        icon: "person.2.fill",
-                        title: "Duplicate Contacts",
-                        value: "\(contactsResults.totalDuplicates)",
-                        color: .brown
-                    )
-                }
-
-                if let calendarResults = results.calendarResults {
-                    StatCard(
-                        icon: "calendar.badge.clock",
-                        title: "Old Events",
-                        value: "\(calendarResults.totalCleanableEvents)",
-                        color: .teal
-                    )
-                }
             }
         }
     }
@@ -481,6 +466,100 @@ struct DashboardView: View {
         } else {
             return "Your device needs attention. Use AI Cleaner to free up space!"
         }
+    }
+
+    // MARK: - Additional Categories
+
+    private var additionalCategoriesView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Other Categories")
+                .font(.headline)
+
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                // Contacts Card
+                contactsCard
+
+                // Calendar Card
+                calendarCard
+            }
+        }
+    }
+
+    private var contactsCard: some View {
+        let contactsAuth = ContactsCleaner.shared.checkAuthorizationStatus()
+        let hasResults = scanCoordinator.scanResults?.contactsResults != nil
+        let count = scanCoordinator.scanResults?.contactsResults?.totalDuplicates ?? 0
+
+        let displayValue: String
+        let needsPermission = contactsAuth != .authorized
+
+        if needsPermission {
+            displayValue = "🔒"
+        } else if !hasResults {
+            displayValue = "—"
+        } else {
+            displayValue = "\(count)"
+        }
+
+        return Button(action: {
+            if needsPermission {
+                // Request permission
+                Task {
+                    _ = await ContactsCleaner.shared.requestAuthorization()
+                }
+            } else if hasResults {
+                // Open contacts view
+                // TODO: Navigate to contacts
+            }
+        }) {
+            StatCard(
+                icon: "person.2.fill",
+                title: needsPermission ? "Contacts (Locked)" : "Duplicate Contacts",
+                value: displayValue,
+                color: .brown
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var calendarCard: some View {
+        let calendarAuth = CalendarCleaner.shared.checkAuthorizationStatus(for: .event)
+        let hasResults = scanCoordinator.scanResults?.calendarResults != nil
+        let count = scanCoordinator.scanResults?.calendarResults?.totalCleanableEvents ?? 0
+
+        let displayValue: String
+        let needsPermission = calendarAuth != .authorized
+
+        if needsPermission {
+            displayValue = "🔒"
+        } else if !hasResults {
+            displayValue = "—"
+        } else {
+            displayValue = "\(count)"
+        }
+
+        return Button(action: {
+            if needsPermission {
+                // Request permission
+                Task {
+                    _ = await CalendarCleaner.shared.requestAuthorization(for: .event)
+                }
+            } else if hasResults {
+                // Open calendar view
+                // TODO: Navigate to calendar
+            }
+        }) {
+            StatCard(
+                icon: "calendar.badge.clock",
+                title: needsPermission ? "Calendar (Locked)" : "Old Events",
+                value: displayValue,
+                color: .teal
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Storage Recommendations
