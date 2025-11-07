@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreData
+internal import Combine
 
 struct SettingsView: View {
     @StateObject private var revenueCat = RevenueCatManager.shared

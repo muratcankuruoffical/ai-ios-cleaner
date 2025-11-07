@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+internal import Combine
 
 struct ScanProgressView: View {
     @ObservedObject var coordinator: ScanCoordinator

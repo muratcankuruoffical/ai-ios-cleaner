@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+internal import Combine
 
 struct OnboardingView: View {
     @StateObject private var viewModel = OnboardingViewModel()
