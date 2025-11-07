@@ -7,7 +7,7 @@
 
 import SwiftUI
 import Charts
-import EventKit
+internal import EventKit
 internal import Combine
 
 struct DashboardView: View {
