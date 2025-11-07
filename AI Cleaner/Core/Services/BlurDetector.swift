@@ -24,8 +24,8 @@ final class BlurDetector {
         var blurry: Float = 100.0
         var acceptable: Float = 200.0
 
-        static let `default` = BlurThresholds()
-        static let strict = BlurThresholds(veryBlurry: 100.0, blurry: 200.0, acceptable: 400.0)
+        nonisolated(unsafe) static let `default` = BlurThresholds()
+        nonisolated(unsafe) static let strict = BlurThresholds(veryBlurry: 100.0, blurry: 200.0, acceptable: 400.0)
     }
 
     enum BlurLevel {
@@ -213,7 +213,7 @@ final class BlurDetector {
         }
 
         // Calculate average edge intensity
-        let extent = outputImage.extent
+        _ = outputImage.extent
         let downsampledExtent = CGRect(x: 0, y: 0, width: 100, height: 100)
 
         guard let outputCGImage = ciContext.createCGImage(outputImage, from: downsampledExtent) else {

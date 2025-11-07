@@ -35,6 +35,8 @@ final class ContactsCleaner {
             return .notDetermined
         case .restricted:
             return .restricted
+        case .limited:
+            return .authorized // Treat limited as authorized for our purposes
         @unknown default:
             return .denied
         }
@@ -70,9 +72,13 @@ final class ContactsCleaner {
         }
     }
 
-    struct DuplicateContactGroup {
+    struct DuplicateContactGroup: Identifiable {
         let contacts: [CNContact]
         let matchReason: String
+
+        var id: String {
+            contacts.first?.identifier ?? UUID().uuidString
+        }
 
         // The contact to keep (usually the one with more info)
         var primaryContact: CNContact? {

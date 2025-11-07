@@ -482,7 +482,7 @@ struct LargeVideosListView: View {
         Task {
             do {
                 try await PhotoLibraryService.shared.delete(assets: [video.asset])
-                await MainActor.run {
+                _ = await MainActor.run {
                     deletedVideoIds.insert(video.asset.localIdentifier)
                 }
             } catch {
@@ -770,7 +770,7 @@ struct PhotoOptimizationView: View {
         results = []
 
         Task {
-            let allResults = await PhotoOptimizer.shared.optimizePhotos(
+            _ = await PhotoOptimizer.shared.optimizePhotos(
                 photos: photos,
                 configuration: .preset1080p,
                 deleteOriginals: deleteOriginals,
@@ -783,7 +783,7 @@ struct PhotoOptimizationView: View {
                 }
             )
 
-            await MainActor.run {
+            _ = await MainActor.run {
                 isOptimizing = false
                 showResults = true
             }

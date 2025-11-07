@@ -35,6 +35,10 @@ final class CalendarCleaner {
             return .notDetermined
         case .restricted:
             return .restricted
+        case .fullAccess:
+            return .authorized // iOS 17+
+        case .writeOnly:
+            return .authorized // iOS 17+
         @unknown default:
             return .denied
         }
@@ -42,7 +46,16 @@ final class CalendarCleaner {
 
     func requestAuthorization(for entityType: EKEntityType) async -> Bool {
         do {
-            return try await eventStore.requestAccess(to: entityType)
+            // Use new iOS 17+ API if available
+            if #available(iOS 17.0, *) {
+                if entityType == .event {
+                    return try await eventStore.requestFullAccessToEvents()
+                } else {
+                    return try await eventStore.requestFullAccessToReminders()
+                }
+            } else {
+                return try await eventStore.requestAccess(to: entityType)
+            }
         } catch {
             print("❌ Calendar authorization error: \(error)")
             return false
@@ -56,15 +69,15 @@ final class CalendarCleaner {
         var completedRemindersCutoffMonths: Int = 3 // Completed reminders older than 3 months
         var cancelledEventsCutoffDays: Int = 30 // Cancelled events older than 30 days
 
-        static let `default` = Configuration()
+        nonisolated(unsafe) static let `default` = Configuration()
 
-        static let aggressive = Configuration(
+        nonisolated(unsafe) static let aggressive = Configuration(
             pastEventsCutoffMonths: 3,
             completedRemindersCutoffMonths: 1,
             cancelledEventsCutoffDays: 7
         )
 
-        static let conservative = Configuration(
+        nonisolated(unsafe) static let conservative = Configuration(
             pastEventsCutoffMonths: 12,
             completedRemindersCutoffMonths: 6,
             cancelledEventsCutoffDays: 90

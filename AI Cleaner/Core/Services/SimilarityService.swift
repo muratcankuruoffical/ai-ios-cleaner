@@ -20,9 +20,9 @@ final class SimilarityService {
         var minGroupSize: Int = 2
         var useCosineSimilarity: Bool = true
 
-        static let `default` = Configuration()
-        static let strict = Configuration(similarityThreshold: 0.10, minGroupSize: 2)
-        static let relaxed = Configuration(similarityThreshold: 0.25, minGroupSize: 2)
+        nonisolated(unsafe) static let `default` = Configuration()
+        nonisolated(unsafe) static let strict = Configuration(similarityThreshold: 0.10, minGroupSize: 2)
+        nonisolated(unsafe) static let relaxed = Configuration(similarityThreshold: 0.25, minGroupSize: 2)
     }
 
     // MARK: - Data Types
@@ -125,8 +125,8 @@ final class SimilarityService {
 
                 // Log first few comparisons for debugging
                 if count <= 10 && (isSimilar || j - i == 1) {
-                    let asset1ID = assets[i].asset.localIdentifier.prefix(8)
-                    let asset2ID = assets[j].asset.localIdentifier.prefix(8)
+                    _ = assets[i].asset.localIdentifier.prefix(8)
+                    _ = assets[j].asset.localIdentifier.prefix(8)
                     let symbol = isSimilar ? "✅" : "❌"
                     print("   \(symbol) [\(i)] vs [\(j)]: distance = \(String(format: "%.4f", distance))")
                 }

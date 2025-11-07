@@ -21,7 +21,7 @@ final class VideoAnalyzer {
         var largeVideoThresholdMB: Int64 = 200
         var similarityThreshold: TimeInterval = 2.0 // seconds
 
-        static let `default` = Configuration()
+        nonisolated(unsafe) static let `default` = Configuration()
     }
 
     // MARK: - Video Information
@@ -61,7 +61,7 @@ final class VideoAnalyzer {
         if let videoTrack = try? await avAsset.loadTracks(withMediaType: .video).first {
             frameRate = try await videoTrack.load(.nominalFrameRate)
 
-            if let formatDescriptions = try? await videoTrack.load(.formatDescriptions) as? [CMFormatDescription],
+            if let formatDescriptions = try? await videoTrack.load(.formatDescriptions),
                let formatDescription = formatDescriptions.first {
                 let codecType = CMFormatDescriptionGetMediaSubType(formatDescription)
                 codec = fourCCToString(codecType)
@@ -197,7 +197,23 @@ final class VideoAnalyzer {
         generator.maximumSize = CGSize(width: 512, height: 512)
 
         let cmTime = CMTime(seconds: time, preferredTimescale: 600)
-        let cgImage = try generator.copyCGImage(at: cmTime, actualTime: nil)
+
+        // Use new async API for iOS 18+
+        let cgImage: CGImage
+        if #available(iOS 18.0, *) {
+            cgImage = try await withCheckedThrowingContinuation { continuation in
+                generator.generateCGImageAsynchronously(for: cmTime) { result in
+                    switch result {
+                    case .success(let image):
+                        continuation.resume(returning: image.image)
+                    case .failure(let error):
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        } else {
+            cgImage = try generator.copyCGImage(at: cmTime, actualTime: nil)
+        }
 
         return UIImage(cgImage: cgImage)
     }

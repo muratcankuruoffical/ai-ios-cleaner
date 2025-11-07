@@ -161,7 +161,6 @@ struct FeatureVector {
     }
 
     static func fromFloatArray(_ array: [Float]) -> Data {
-        var array = array
         return array.withUnsafeBytes { Data($0) }
     }
 

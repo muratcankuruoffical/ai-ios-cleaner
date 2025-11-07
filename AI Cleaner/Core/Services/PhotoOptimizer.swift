@@ -31,17 +31,17 @@ final class PhotoOptimizer {
         /// Only optimize photos taken in last N days (nil = all photos)
         var recentDaysOnly: Int? = 30
 
-        static let `default` = Configuration()
+        nonisolated(unsafe) static let `default` = Configuration()
 
         /// 1080p preset - Aggressive compression for real space savings
-        static let preset1080p = Configuration(
+        nonisolated(unsafe) static let preset1080p = Configuration(
             targetResolution: 1920,
-            minResolutionForOptimization: 2560,
+            minResolutationForOptimization: 2560,
             compressionQuality: 0.70  // Lower quality = smaller file
         )
 
         /// High quality preset - Balanced compression
-        static let presetHighQuality = Configuration(
+        nonisolated(unsafe) static let presetHighQuality = Configuration(
             targetResolution: 1920,
             minResolutionForOptimization: 2560,
             compressionQuality: 0.80  // Still lower than before

@@ -78,7 +78,7 @@ final class DocumentDetector {
         /// Enable text recognition (OCR)
         var enableOCR: Bool = true
 
-        static let `default` = Configuration()
+        nonisolated(unsafe) static let `default` = Configuration()
     }
 
     // MARK: - Keywords Database
