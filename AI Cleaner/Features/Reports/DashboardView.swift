@@ -220,12 +220,16 @@ struct DashboardView: View {
                 HStack(spacing: 16) {
                     VStack(spacing: 4) {
                         Text(storage.formatBytes(storage.usedSpace))
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(CleanerTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.center)
                         Text("Used")
                             .cleanerFont(.caption)
+                            .lineLimit(1)
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 50)
 
                     Divider()
                         .frame(height: 40)
@@ -233,12 +237,16 @@ struct DashboardView: View {
 
                     VStack(spacing: 4) {
                         Text(storage.formatBytes(storage.freeSpace))
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(CleanerTheme.accentGreen)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.center)
                         Text("Free")
                             .cleanerFont(.caption)
+                            .lineLimit(1)
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 50)
 
                     Divider()
                         .frame(height: 40)
@@ -246,12 +254,16 @@ struct DashboardView: View {
 
                     VStack(spacing: 4) {
                         Text(String(format: "%.1f GB", potentialSavingsGB))
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(CleanerTheme.accent)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.center)
                         Text("Can Save")
                             .cleanerFont(.caption)
+                            .lineLimit(1)
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 50)
                 }
             }
         }
