@@ -39,6 +39,9 @@ struct DashboardView: View {
 
                     // System Health (Battery + Storage)
                     systemHealthView
+
+                    // Storage Recommendations
+                    storageRecommendationsWidget
                 }
                 .padding()
             }
@@ -460,6 +463,13 @@ struct DashboardView: View {
         } else {
             return "Your device needs attention. Use AI Cleaner to free up space!"
         }
+    }
+
+    // MARK: - Storage Recommendations
+
+    private var storageRecommendationsWidget: some View {
+        let storage = SystemInsights.shared.getStorageInfo()
+        return CompactRecommendationsWidget(storageInfo: storage)
     }
 }
 
