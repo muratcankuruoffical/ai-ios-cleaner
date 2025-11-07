@@ -21,7 +21,7 @@ final class VideoAnalyzer {
         var largeVideoThresholdMB: Int64 = 200
         var similarityThreshold: TimeInterval = 2.0 // seconds
 
-        nonisolated(unsafe) static let `default` = Configuration()
+        static let `default` = Configuration()
     }
 
     // MARK: - Video Information
@@ -202,12 +202,13 @@ final class VideoAnalyzer {
         let cgImage: CGImage
         if #available(iOS 18.0, *) {
             cgImage = try await withCheckedThrowingContinuation { continuation in
-                generator.generateCGImageAsynchronously(for: cmTime) { result in
-                    switch result {
-                    case .success(let image):
-                        continuation.resume(returning: image.image)
-                    case .failure(let error):
+                generator.generateCGImageAsynchronously(for: cmTime) { image, _, error in
+                    if let error = error {
                         continuation.resume(throwing: error)
+                    } else if let image = image {
+                        continuation.resume(returning: image)
+                    } else {
+                        continuation.resume(throwing: VideoAnalyzerError.failedToGenerateThumbnail)
                     }
                 }
             }
@@ -286,6 +287,7 @@ final class VideoAnalyzer {
 enum VideoAnalyzerError: Error, LocalizedError {
     case notAVideo
     case failedToLoadAsset
+    case failedToGenerateThumbnail
 
     var errorDescription: String? {
         switch self {
@@ -293,6 +295,8 @@ enum VideoAnalyzerError: Error, LocalizedError {
             return "Asset is not a video"
         case .failedToLoadAsset:
             return "Failed to load video asset"
+        case .failedToGenerateThumbnail:
+            return "Failed to generate video thumbnail"
         }
     }
 }
