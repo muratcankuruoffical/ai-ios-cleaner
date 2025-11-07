@@ -7,6 +7,8 @@
 
 import SwiftUI
 import Charts
+import EventKit
+internal import Combine
 
 struct DashboardView: View {
     @StateObject private var scanCoordinator = ScanCoordinator()
@@ -155,7 +157,7 @@ struct DashboardView: View {
 
     private func storageDonutCard(_ results: ScanCoordinator.ScanResults) -> some View {
         let storage = SystemInsights.shared.getStorageInfo()
-        let potentialSavingsBytes = results.statistics.totalSize
+        let potentialSavingsBytes = results.statistics.potentialSavingsBytes
         let potentialSavingsGB = Double(potentialSavingsBytes) / 1_073_741_824 // Convert to GB
 
         return VStack(spacing: 20) {
