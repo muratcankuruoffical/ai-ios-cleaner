@@ -61,6 +61,10 @@ struct DashboardView: View {
                         // System Health
                         systemHealthView
                             .transition(.scale.combined(with: .opacity))
+
+                        // Storage Recommendations
+                        storageRecommendationsWidget
+                            .transition(.scale.combined(with: .opacity))
                     }
                     .padding()
                     .opacity(animateContent ? 1 : 0)
@@ -678,6 +682,13 @@ struct DashboardView: View {
         } else if let calendarResults = results.calendarResults, calendarResults.totalCleanableEvents > 0 {
             showingSmartAlbums = true
         }
+    }
+
+    // MARK: - Storage Recommendations Widget
+
+    private var storageRecommendationsWidget: some View {
+        let storage = SystemInsights.shared.getStorageInfo()
+        return CompactRecommendationsWidget(storageInfo: storage)
     }
 }
 

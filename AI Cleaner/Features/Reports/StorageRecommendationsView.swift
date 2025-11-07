@@ -252,7 +252,7 @@ struct InstructionsView: View {
     }
 }
 
-// MARK: - Compact Recommendations Widget (for Dashboard)
+// MARK: - Compact Recommendations Widget (for Dashboard) - Dark Theme
 
 struct CompactRecommendationsWidget: View {
     let storageInfo: SystemInsights.StorageInfo?
@@ -263,52 +263,62 @@ struct CompactRecommendationsWidget: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundColor(.orange)
-                Text("Storage Tips")
-                    .font(.headline)
+                HStack(spacing: 8) {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.title3)
+                        .foregroundColor(CleanerTheme.accent)
+                    Text("STORAGE TIPS")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(CleanerTheme.textSecondary)
+                        .tracking(1.2)
+                }
                 Spacer()
                 Button(action: { showingFullView = true }) {
                     Text("View All")
-                        .font(.caption)
-                        .foregroundColor(.blue)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(CleanerTheme.primary)
                 }
             }
 
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 ForEach(topRecommendations.prefix(3), id: \.type.rawValue) { recommendation in
-                    HStack(spacing: 8) {
-                        Image(systemName: recommendation.icon)
-                            .font(.caption)
-                            .foregroundColor(priorityColor(recommendation.priority))
-                            .frame(width: 20)
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(priorityColor(recommendation.priority).opacity(0.15))
+                                .frame(width: 32, height: 32)
 
-                        VStack(alignment: .leading, spacing: 2) {
+                            Image(systemName: recommendation.icon)
+                                .font(.system(size: 14))
+                                .foregroundColor(priorityColor(recommendation.priority))
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
                             Text(recommendation.title)
-                                .font(.caption)
-                                .fontWeight(.medium)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(CleanerTheme.textPrimary)
                             Text(recommendation.estimatedSavings)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(CleanerTheme.textSecondary)
                         }
 
                         Spacer()
 
                         if recommendation.priority == .high {
                             Image(systemName: "exclamationmark.circle.fill")
-                                .font(.caption2)
-                                .foregroundColor(.red)
+                                .font(.system(size: 16))
+                                .foregroundColor(CleanerTheme.accentRed)
                         }
                     }
-                    .padding(.vertical, 4)
                 }
             }
         }
-        .padding()
-        .background(Color.orange.opacity(0.1))
-        .cornerRadius(12)
+        .padding(20)
+        .background(CleanerTheme.surface)
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
         .sheet(isPresented: $showingFullView) {
             StorageRecommendationsView(storageInfo: storageInfo)
         }
@@ -316,9 +326,9 @@ struct CompactRecommendationsWidget: View {
 
     private func priorityColor(_ priority: StorageRecommendations.Recommendation.Priority) -> Color {
         switch priority {
-        case .high: return .red
-        case .medium: return .orange
-        case .low: return .blue
+        case .high: return CleanerTheme.accentRed
+        case .medium: return CleanerTheme.accent
+        case .low: return CleanerTheme.primary
         }
     }
 }
