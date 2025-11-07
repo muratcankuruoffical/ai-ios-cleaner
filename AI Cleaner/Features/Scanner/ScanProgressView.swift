@@ -12,48 +12,55 @@ struct ScanProgressView: View {
     @ObservedObject var coordinator: ScanCoordinator
 
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
+        ZStack {
+            CleanerTheme.background.ignoresSafeArea()
 
-            // Animated Icon
-            ProgressRingView(progress: coordinator.progress.percentage)
+            VStack(spacing: 40) {
+                Spacer()
 
-            VStack(spacing: 12) {
-                Text(coordinator.progress.currentStep)
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                // Animated Icon
+                ProgressRingView(progress: coordinator.progress.percentage)
+                    .scaleIn()
 
-                Text("\(coordinator.progress.currentItemIndex) / \(coordinator.progress.totalItems)")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                VStack(spacing: 12) {
+                    Text(coordinator.progress.currentStep)
+                        .cleanerFont(.title2)
+                        .foregroundColor(CleanerTheme.textPrimary)
 
-                if coordinator.progress.percentage > 0 {
-                    Text(String(format: "%.0f%% Complete", coordinator.progress.percentage * 100))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Text("\(coordinator.progress.currentItemIndex) / \(coordinator.progress.totalItems)")
+                        .cleanerFont(.body)
+                        .foregroundColor(CleanerTheme.textSecondary)
+
+                    if coordinator.progress.percentage > 0 {
+                        Text(String(format: "%.0f%% Complete", coordinator.progress.percentage * 100))
+                            .cleanerFont(.caption)
+                            .foregroundColor(CleanerTheme.textTertiary)
+                    }
                 }
+                .fadeIn(delay: 0.2)
+
+                ProgressView(value: coordinator.progress.percentage)
+                    .progressViewStyle(.linear)
+                    .tint(CleanerTheme.primary)
+                    .frame(maxWidth: 300)
+
+                Spacer()
+
+                Button(action: {
+                    coordinator.cancelScan()
+                }) {
+                    Text("Cancel")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(CleanerTheme.accentRed)
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 12)
+                        .background(CleanerTheme.accentRed.opacity(0.15))
+                        .cornerRadius(12)
+                }
+                .padding(.bottom, 32)
             }
-
-            ProgressView(value: coordinator.progress.percentage)
-                .progressViewStyle(.linear)
-                .frame(maxWidth: 300)
-
-            Spacer()
-
-            Button(action: {
-                coordinator.cancelScan()
-            }) {
-                Text("Cancel")
-                    .fontWeight(.semibold)
-                    .foregroundColor(.red)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 12)
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(12)
-            }
-            .padding(.bottom, 32)
+            .padding()
         }
-        .padding()
     }
 }
 
@@ -66,18 +73,14 @@ struct ProgressRingView: View {
         ZStack {
             // Background ring
             Circle()
-                .stroke(Color.gray.opacity(0.2), lineWidth: 12)
+                .stroke(CleanerTheme.surface, lineWidth: 12)
                 .frame(width: 120, height: 120)
 
             // Progress ring
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
-                    LinearGradient(
-                        colors: [.blue, .purple],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
+                    CleanerTheme.primaryGradient,
                     style: StrokeStyle(lineWidth: 12, lineCap: .round)
                 )
                 .frame(width: 120, height: 120)
@@ -85,9 +88,9 @@ struct ProgressRingView: View {
                 .animation(.easeInOut, value: progress)
 
             // Icon
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 40))
-                .foregroundColor(.blue)
+            Image(systemName: "sparkles")
+                .font(.system(size: 40, weight: .semibold))
+                .foregroundColor(CleanerTheme.iconGray)
         }
     }
 }
@@ -100,106 +103,133 @@ struct ScanResultsView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 64))
-                            .foregroundColor(.green)
+            ZStack {
+                CleanerTheme.background.ignoresSafeArea()
 
-                        Text("Scan Complete!")
-                            .font(.title)
-                            .fontWeight(.bold)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 32) {
+                        // Header
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(CleanerTheme.accentGreen.opacity(0.2))
+                                    .frame(width: 100, height: 100)
+                                    .blur(radius: 30)
 
-                        Text("Found \(results.statistics.totalDuplicates) items to clean")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.top, 32)
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 64))
+                                    .foregroundColor(CleanerTheme.accentGreen)
+                            }
+                            .scaleIn()
 
-                    // Potential Savings Card
-                    VStack(spacing: 16) {
-                        Text("Potential Space Savings")
-                            .font(.headline)
+                            VStack(spacing: 8) {
+                                Text("Scan Complete!")
+                                    .cleanerFont(.title)
+                                    .foregroundColor(CleanerTheme.textPrimary)
 
-                        Text(results.formattedSavings)
-                            .font(.system(size: 48, weight: .bold))
-                            .foregroundColor(.blue)
-
-                        Text("by cleaning suggested items")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(16)
-                    .padding(.horizontal)
-
-                    // Categories
-                    VStack(spacing: 16) {
-                        if !results.similarGroups.isEmpty {
-                            CategoryCard(
-                                icon: "square.on.square",
-                                title: "Similar Photos",
-                                count: results.statistics.totalDuplicates,
-                                color: .blue
-                            )
+                                Text("Found \(results.statistics.totalDuplicates) items to clean")
+                                    .cleanerFont(.body)
+                                    .foregroundColor(CleanerTheme.textSecondary)
+                            }
+                            .fadeIn(delay: 0.2)
                         }
+                        .padding(.top, 32)
 
-                        if !results.blurryPhotos.isEmpty {
-                            CategoryCard(
-                                icon: "eye.slash",
-                                title: "Blurry Photos",
-                                count: results.blurryPhotos.count,
-                                color: .orange
-                            )
+                        // Potential Savings Card
+                        VStack(spacing: 16) {
+                            Text("Potential Space Savings")
+                                .cleanerFont(.headline)
+                                .foregroundColor(CleanerTheme.textPrimary)
+
+                            Text(results.formattedSavings)
+                                .font(.system(size: 48, weight: .bold))
+                                .foregroundColor(CleanerTheme.primary)
+
+                            Text("by cleaning suggested items")
+                                .cleanerFont(.caption)
+                                .foregroundColor(CleanerTheme.textSecondary)
                         }
+                        .padding(24)
+                        .frame(maxWidth: .infinity)
+                        .background(CleanerTheme.cardBackground)
+                        .cornerRadius(20)
+                        .padding(.horizontal)
+                        .scaleIn(delay: 0.3)
 
-                        if !results.darkPhotos.isEmpty {
-                            CategoryCard(
-                                icon: "moon",
-                                title: "Dark Photos",
-                                count: results.darkPhotos.count,
-                                color: .purple
-                            )
+                        // Categories
+                        VStack(spacing: 16) {
+                            if !results.similarGroups.isEmpty {
+                                ResultCategoryCard(
+                                    icon: "square.on.square",
+                                    title: "Similar Photos",
+                                    count: results.statistics.totalDuplicates,
+                                    color: CleanerTheme.primary
+                                )
+                                .scaleIn(delay: 0.4)
+                            }
+
+                            if !results.blurryPhotos.isEmpty {
+                                ResultCategoryCard(
+                                    icon: "eye.slash",
+                                    title: "Blurry Photos",
+                                    count: results.blurryPhotos.count,
+                                    color: CleanerTheme.accent
+                                )
+                                .scaleIn(delay: 0.5)
+                            }
+
+                            if !results.darkPhotos.isEmpty {
+                                ResultCategoryCard(
+                                    icon: "moon",
+                                    title: "Dark Photos",
+                                    count: results.darkPhotos.count,
+                                    color: CleanerTheme.accentGreen
+                                )
+                                .scaleIn(delay: 0.6)
+                            }
+
+                            if !results.screenshots.isEmpty {
+                                ResultCategoryCard(
+                                    icon: "camera.viewfinder",
+                                    title: "Screenshots",
+                                    count: results.screenshots.count,
+                                    color: CleanerTheme.accentRed
+                                )
+                                .scaleIn(delay: 0.7)
+                            }
+
+                            if !results.largeVideos.isEmpty {
+                                ResultCategoryCard(
+                                    icon: "video.fill",
+                                    title: "Large Videos",
+                                    count: results.largeVideos.count,
+                                    color: CleanerTheme.primary
+                                )
+                                .scaleIn(delay: 0.8)
+                            }
                         }
+                        .padding(.horizontal)
 
-                        if !results.screenshots.isEmpty {
-                            CategoryCard(
-                                icon: "camera.viewfinder",
-                                title: "Screenshots",
-                                count: results.screenshots.count,
-                                color: .green
-                            )
-                        }
-
-                        if !results.largeVideos.isEmpty {
-                            CategoryCard(
-                                icon: "video.fill",
-                                title: "Large Videos",
-                                count: results.largeVideos.count,
-                                color: .red
-                            )
-                        }
-                    }
-                    .padding(.horizontal)
-
-                    // Action Button
-                    Button(action: {
-                        showingResults = false
-                    }) {
-                        Text("Start Cleaning")
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
+                        // Action Button
+                        Button(action: {
+                            showingResults = false
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                Text("Start Cleaning")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
                             .foregroundColor(.white)
-                            .cornerRadius(12)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18)
+                            .background(CleanerTheme.primaryGradient)
+                            .cornerRadius(16)
+                        }
+                        .padding(.horizontal)
+                        .scaleIn(delay: 0.9)
+                        .padding(.bottom, 32)
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom, 32)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -208,15 +238,16 @@ struct ScanResultsView: View {
                     Button("Done") {
                         showingResults = false
                     }
+                    .foregroundColor(CleanerTheme.primary)
                 }
             }
         }
     }
 }
 
-// MARK: - Category Card
+// MARK: - Result Category Card
 
-struct CategoryCard: View {
+struct ResultCategoryCard: View {
     let icon: String
     let title: String
     let count: Int
@@ -224,27 +255,34 @@ struct CategoryCard: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-                .frame(width: 40)
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(CleanerTheme.iconGray)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .cleanerFont(.headline)
+                    .foregroundColor(CleanerTheme.textPrimary)
                 Text("\(count) items found")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.caption)
+                    .foregroundColor(CleanerTheme.textSecondary)
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
-                .foregroundColor(.gray)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(CleanerTheme.iconGray)
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(12)
+        .padding(16)
+        .background(CleanerTheme.cardBackground)
+        .cornerRadius(16)
     }
 }
 

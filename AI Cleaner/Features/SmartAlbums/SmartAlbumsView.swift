@@ -11,75 +11,133 @@ import Photos
 struct SmartAlbumsView: View {
     let scanResults: ScanCoordinator.ScanResults
     @State private var selectedAlbum: AlbumType?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        List {
-            Section("Categories") {
-                if !scanResults.similarGroups.isEmpty {
-                    AlbumRow(
-                        type: .duplicates,
-                        count: scanResults.statistics.totalDuplicates,
-                        icon: "square.on.square",
-                        color: .blue
-                    )
-                    .onTapGesture {
-                        selectedAlbum = .duplicates
-                    }
-                }
+        ZStack {
+            CleanerTheme.background.ignoresSafeArea()
 
-                if !scanResults.blurryPhotos.isEmpty {
-                    AlbumRow(
-                        type: .blurry,
-                        count: scanResults.blurryPhotos.count,
-                        icon: "eye.slash",
-                        color: .orange
-                    )
-                    .onTapGesture {
-                        selectedAlbum = .blurry
-                    }
-                }
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // Header
+                    headerView
+                        .fadeIn(delay: 0.1)
 
-                if !scanResults.darkPhotos.isEmpty {
-                    AlbumRow(
-                        type: .dark,
-                        count: scanResults.darkPhotos.count,
-                        icon: "moon",
-                        color: .purple
-                    )
-                    .onTapGesture {
-                        selectedAlbum = .dark
-                    }
+                    // Albums Grid
+                    albumsGrid
+                        .fadeIn(delay: 0.2)
                 }
-
-                if !scanResults.screenshots.isEmpty {
-                    AlbumRow(
-                        type: .screenshots,
-                        count: scanResults.screenshots.count,
-                        icon: "camera.viewfinder",
-                        color: .green
-                    )
-                    .onTapGesture {
-                        selectedAlbum = .screenshots
-                    }
-                }
-
-                if !scanResults.largeVideos.isEmpty {
-                    AlbumRow(
-                        type: .largeVideos,
-                        count: scanResults.largeVideos.count,
-                        icon: "video.fill",
-                        color: .red
-                    )
-                    .onTapGesture {
-                        selectedAlbum = .largeVideos
-                    }
-                }
+                .padding()
             }
         }
-        .navigationTitle("Smart Albums")
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Smart Albums")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+            }
+        }
         .sheet(item: $selectedAlbum) { albumType in
             NavigationView {
                 albumDetailView(for: albumType)
+            }
+        }
+    }
+
+    // MARK: - Header
+
+    private var headerView: some View {
+        VStack(spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Categories Found")
+                        .cleanerFont(.title2)
+                        .foregroundColor(CleanerTheme.textPrimary)
+
+                    Text("\(totalItemsCount) items to review")
+                        .cleanerFont(.subheadline)
+                        .foregroundColor(CleanerTheme.textSecondary)
+                }
+
+                Spacer()
+            }
+        }
+        .padding(20)
+        .cleanerCard()
+    }
+
+    // MARK: - Albums Grid
+
+    private var albumsGrid: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible()),
+            GridItem(.flexible())
+        ], spacing: 16) {
+            if !scanResults.similarGroups.isEmpty {
+                AlbumCard(
+                    type: .duplicates,
+                    count: scanResults.statistics.totalDuplicates,
+                    icon: "square.on.square",
+                    color: CleanerTheme.primary
+                )
+                .onTapGesture {
+                    selectedAlbum = .duplicates
+                }
+                .scaleIn(delay: 0.1)
+            }
+
+            if !scanResults.blurryPhotos.isEmpty {
+                AlbumCard(
+                    type: .blurry,
+                    count: scanResults.blurryPhotos.count,
+                    icon: "eye.slash",
+                    color: CleanerTheme.accent
+                )
+                .onTapGesture {
+                    selectedAlbum = .blurry
+                }
+                .scaleIn(delay: 0.2)
+            }
+
+            if !scanResults.darkPhotos.isEmpty {
+                AlbumCard(
+                    type: .dark,
+                    count: scanResults.darkPhotos.count,
+                    icon: "moon",
+                    color: CleanerTheme.accentGreen
+                )
+                .onTapGesture {
+                    selectedAlbum = .dark
+                }
+                .scaleIn(delay: 0.3)
+            }
+
+            if !scanResults.screenshots.isEmpty {
+                AlbumCard(
+                    type: .screenshots,
+                    count: scanResults.screenshots.count,
+                    icon: "camera.viewfinder",
+                    color: CleanerTheme.accentRed
+                )
+                .onTapGesture {
+                    selectedAlbum = .screenshots
+                }
+                .scaleIn(delay: 0.4)
+            }
+
+            if !scanResults.largeVideos.isEmpty {
+                AlbumCard(
+                    type: .largeVideos,
+                    count: scanResults.largeVideos.count,
+                    icon: "video.fill",
+                    color: CleanerTheme.primary
+                )
+                .onTapGesture {
+                    selectedAlbum = .largeVideos
+                }
+                .scaleIn(delay: 0.5)
             }
         }
     }
@@ -107,6 +165,14 @@ struct SmartAlbumsView: View {
         case .largeVideos:
             LargeVideosListView(videos: scanResults.largeVideos)
         }
+    }
+
+    private var totalItemsCount: Int {
+        scanResults.statistics.totalDuplicates +
+        scanResults.blurryPhotos.count +
+        scanResults.darkPhotos.count +
+        scanResults.screenshots.count +
+        scanResults.largeVideos.count
     }
 }
 
@@ -140,35 +206,54 @@ enum AlbumType: Identifiable {
     }
 }
 
-// MARK: - Album Row
+// MARK: - Album Card
 
-struct AlbumRow: View {
+struct AlbumCard: View {
     let type: AlbumType
     let count: Int
     let icon: String
     let color: Color
 
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-                .frame(width: 40)
+        VStack(spacing: 20) {
+            // Icon with gradient background
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 70, height: 70)
+                    .blur(radius: 20)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(type.displayName)
-                    .font(.headline)
-                Text("\(count) items")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 64, height: 64)
+
+                Image(systemName: icon)
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(CleanerTheme.iconGray)
             }
 
-            Spacer()
+            // Count and Title
+            VStack(spacing: 6) {
+                Text("\(count)")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
 
-            Image(systemName: "chevron.right")
-                .foregroundColor(.gray)
+                Text(type.displayName)
+                    .cleanerFont(.callout)
+                    .foregroundColor(CleanerTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
         }
-        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
+        .padding(.horizontal, 16)
+        .background(CleanerTheme.cardBackground)
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(color.opacity(0.2), lineWidth: 1)
+        )
     }
 }
 
@@ -177,15 +262,34 @@ struct AlbumRow: View {
 struct DuplicatesAlbumView: View {
     let groups: [SimilarityService.SimilarityGroup]
     @State private var selectedGroup: SimilarityService.SimilarityGroup?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        List(groups, id: \.id) { group in
-            GroupRow(group: group)
-                .onTapGesture {
-                    selectedGroup = group
+        ZStack {
+            CleanerTheme.background.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 16) {
+                    ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+                        GroupCard(group: group)
+                            .onTapGesture {
+                                selectedGroup = group
+                            }
+                            .scaleIn(delay: Double(index) * 0.05)
+                    }
                 }
+                .padding()
+            }
         }
         .navigationTitle("Similar Photos")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Similar Photos")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+            }
+        }
         .sheet(item: $selectedGroup) { group in
             NavigationView {
                 SwipeDeckView(assets: group.assets, category: "Duplicates")
@@ -194,31 +298,43 @@ struct DuplicatesAlbumView: View {
     }
 }
 
-struct GroupRow: View {
+struct GroupCard: View {
     let group: SimilarityService.SimilarityGroup
 
     var body: some View {
-        HStack(spacing: 12) {
-            Text("\(group.assets.count)")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.blue)
-                .frame(width: 50)
+        HStack(spacing: 16) {
+            // Count Badge
+            ZStack {
+                Circle()
+                    .fill(CleanerTheme.primary.opacity(0.15))
+                    .frame(width: 56, height: 56)
 
-            VStack(alignment: .leading, spacing: 4) {
+                Text("\(group.assets.count)")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(CleanerTheme.primary)
+            }
+
+            // Info
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Similar Group")
-                    .font(.headline)
-                Text("\(group.assets.count) photos")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.headline)
+                    .foregroundColor(CleanerTheme.textPrimary)
+
+                Text("\(group.assets.count) similar photos")
+                    .cleanerFont(.caption)
+                    .foregroundColor(CleanerTheme.textSecondary)
             }
 
             Spacer()
 
+            // Chevron
             Image(systemName: "chevron.right")
-                .foregroundColor(.gray)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(CleanerTheme.iconGray)
         }
-        .padding(.vertical, 8)
+        .padding(20)
+        .background(CleanerTheme.cardBackground)
+        .cornerRadius(16)
     }
 }
 
@@ -227,33 +343,52 @@ struct GroupRow: View {
 struct SimplePhotoListView: View {
     let photos: [PHAsset]
     let title: String
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack {
-            Button(action: {
-                // Navigate to swipe deck
-            }) {
-                Text("Review All")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
-            .padding()
+        ZStack {
+            CleanerTheme.background.ignoresSafeArea()
 
-            ScrollView {
-                LazyVGrid(columns: [
-                    GridItem(.adaptive(minimum: 100))
-                ], spacing: 2) {
-                    ForEach(photos, id: \.localIdentifier) { asset in
-                        PhotoThumbnailView(asset: asset)
+            VStack(spacing: 0) {
+                // Review Button
+                Button(action: {
+                    // Navigate to swipe deck
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "hand.tap")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("Review All")
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(CleanerTheme.primaryGradient)
+                    .cornerRadius(16)
+                }
+                .padding()
+
+                // Photo Grid
+                ScrollView(showsIndicators: false) {
+                    LazyVGrid(columns: [
+                        GridItem(.adaptive(minimum: 100), spacing: 2)
+                    ], spacing: 2) {
+                        ForEach(photos, id: \.localIdentifier) { asset in
+                            PhotoThumbnailView(asset: asset)
+                        }
                     }
                 }
             }
         }
         .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(title)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+            }
+        }
     }
 }
 
@@ -269,22 +404,20 @@ struct PhotoThumbnailView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else if isLoading {
-                // Skeleton loading state with shimmer
                 ZStack {
                     Rectangle()
-                        .fill(Color.gray.opacity(0.2))
+                        .fill(CleanerTheme.surface)
 
                     ProgressView()
-                        .tint(.gray)
+                        .tint(CleanerTheme.iconGray)
                 }
             } else {
-                // Failed to load
                 ZStack {
                     Rectangle()
-                        .fill(Color.gray.opacity(0.1))
+                        .fill(CleanerTheme.surface)
 
                     Image(systemName: "photo")
-                        .foregroundColor(.gray)
+                        .foregroundColor(CleanerTheme.iconGray)
                 }
             }
         }
@@ -314,32 +447,70 @@ struct PhotoThumbnailView: View {
 
 struct LargeVideosListView: View {
     let videos: [VideoAnalyzer.VideoInfo]
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        List(videos, id: \.asset.localIdentifier) { video in
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Image(systemName: "video.fill")
-                        .foregroundColor(.red)
+        ZStack {
+            CleanerTheme.background.ignoresSafeArea()
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(VideoAnalyzer.shared.formatFileSize(video.fileSize))
-                            .font(.headline)
-                        Text(VideoAnalyzer.shared.formatDuration(video.duration))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 12) {
+                    ForEach(Array(videos.enumerated()), id: \.element.asset.localIdentifier) { index, video in
+                        VideoRow(video: video)
+                            .scaleIn(delay: Double(index) * 0.05)
                     }
-
-                    Spacer()
                 }
-
-                Text("\(Int(video.resolution.width))×\(Int(video.resolution.height)) @ \(String(format: "%.0f", video.frameRate))fps")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                .padding()
             }
-            .padding(.vertical, 4)
         }
         .navigationTitle("Large Videos")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Large Videos")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+            }
+        }
+    }
+}
+
+struct VideoRow: View {
+    let video: VideoAnalyzer.VideoInfo
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Video Icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(CleanerTheme.accentRed.opacity(0.15))
+                    .frame(width: 56, height: 56)
+
+                Image(systemName: "video.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(CleanerTheme.iconGray)
+            }
+
+            // Info
+            VStack(alignment: .leading, spacing: 6) {
+                Text(VideoAnalyzer.shared.formatFileSize(video.fileSize))
+                    .cleanerFont(.headline)
+                    .foregroundColor(CleanerTheme.textPrimary)
+
+                Text(VideoAnalyzer.shared.formatDuration(video.duration))
+                    .cleanerFont(.caption)
+                    .foregroundColor(CleanerTheme.textSecondary)
+
+                Text("\(Int(video.resolution.width))×\(Int(video.resolution.height)) @ \(String(format: "%.0f", video.frameRate))fps")
+                    .cleanerFont(.caption2)
+                    .foregroundColor(CleanerTheme.textTertiary)
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .background(CleanerTheme.cardBackground)
+        .cornerRadius(16)
     }
 }
 

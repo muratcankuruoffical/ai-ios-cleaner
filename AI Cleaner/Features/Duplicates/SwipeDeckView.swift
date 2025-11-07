@@ -19,7 +19,7 @@ struct SwipeDeckView: View {
 
     var body: some View {
         ZStack {
-            Color.gray.opacity(0.1).ignoresSafeArea()
+            CleanerTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header
@@ -52,8 +52,15 @@ struct SwipeDeckView: View {
                 actionButtonsView
             }
         }
-        .navigationTitle("Review Photos")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Review Photos")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+            }
+        }
         .alert("Delete Photos?", isPresented: $viewModel.showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Delete \(viewModel.toDelete.count)", role: .destructive) {
@@ -79,10 +86,11 @@ struct SwipeDeckView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(viewModel.currentIndex + 1) / \(viewModel.totalCards)")
-                    .font(.headline)
+                    .cleanerFont(.headline)
+                    .foregroundColor(CleanerTheme.textPrimary)
                 Text("Swipe to review")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.caption)
+                    .foregroundColor(CleanerTheme.textSecondary)
             }
 
             Spacer()
@@ -91,18 +99,18 @@ struct SwipeDeckView: View {
                 StatBadge(
                     icon: "checkmark.circle.fill",
                     count: viewModel.toKeep.count,
-                    color: .green
+                    color: CleanerTheme.accentGreen
                 )
 
                 StatBadge(
                     icon: "trash.circle.fill",
                     count: viewModel.toDelete.count,
-                    color: .red
+                    color: CleanerTheme.accentRed
                 )
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(CleanerTheme.cardBackground)
     }
 
     // MARK: - Completion View
@@ -111,43 +119,52 @@ struct SwipeDeckView: View {
         VStack(spacing: 32) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 80))
-                .foregroundColor(.green)
+                .foregroundColor(CleanerTheme.accentGreen)
+                .scaleIn()
 
             VStack(spacing: 12) {
                 Text("Review Complete!")
-                    .font(.title)
-                    .fontWeight(.bold)
+                    .cleanerFont(.title)
+                    .foregroundColor(CleanerTheme.textPrimary)
 
                 Text("Kept: \(viewModel.toKeep.count) • To Delete: \(viewModel.toDelete.count)")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.body)
+                    .foregroundColor(CleanerTheme.textSecondary)
             }
+            .fadeIn(delay: 0.2)
 
-            if !viewModel.toDelete.isEmpty {
-                Button(action: {
-                    viewModel.showingDeleteConfirmation = true
-                }) {
-                    Text("Delete Selected Photos")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: 300)
-                        .padding()
-                        .background(Color.red)
+            VStack(spacing: 16) {
+                if !viewModel.toDelete.isEmpty {
+                    Button(action: {
+                        viewModel.showingDeleteConfirmation = true
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "trash.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Delete Selected Photos")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
                         .foregroundColor(.white)
-                        .cornerRadius(12)
+                        .frame(maxWidth: 300)
+                        .padding(.vertical, 16)
+                        .background(CleanerTheme.accentRed)
+                        .cornerRadius(16)
+                    }
+                }
+
+                Button(action: {
+                    dismiss()
+                }) {
+                    Text("Done")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: 300)
+                        .padding(.vertical, 16)
+                        .background(CleanerTheme.primaryGradient)
+                        .cornerRadius(16)
                 }
             }
-
-            Button(action: {
-                dismiss()
-            }) {
-                Text("Done")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: 300)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
+            .scaleIn(delay: 0.3)
         }
         .padding()
     }
@@ -163,12 +180,12 @@ struct SwipeDeckView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 32))
-                    Text("Keep")
-                        .font(.caption)
+                    Text("Tut")
+                        .cleanerFont(.callout)
                 }
-                .foregroundColor(.green)
+                .foregroundColor(CleanerTheme.accentGreen)
                 .frame(width: 80, height: 80)
-                .background(Color.green.opacity(0.1))
+                .background(CleanerTheme.accentGreen.opacity(0.15))
                 .cornerRadius(40)
             }
 
@@ -180,7 +197,7 @@ struct SwipeDeckView: View {
             }) {
                 Image(systemName: "arrow.uturn.backward.circle.fill")
                     .font(.system(size: 28))
-                    .foregroundColor(.gray)
+                    .foregroundColor(viewModel.swipeHistory.isEmpty ? CleanerTheme.textTertiary : CleanerTheme.iconGray)
             }
             .disabled(viewModel.swipeHistory.isEmpty)
 
@@ -193,17 +210,17 @@ struct SwipeDeckView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "trash.circle.fill")
                         .font(.system(size: 32))
-                    Text("Delete")
-                        .font(.caption)
+                    Text("Sil")
+                        .cleanerFont(.callout)
                 }
-                .foregroundColor(.red)
+                .foregroundColor(CleanerTheme.accentRed)
                 .frame(width: 80, height: 80)
-                .background(Color.red.opacity(0.1))
+                .background(CleanerTheme.accentRed.opacity(0.15))
                 .cornerRadius(40)
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(CleanerTheme.cardBackground)
         .disabled(!viewModel.hasMoreCards)
     }
 }
@@ -227,8 +244,8 @@ struct SwipeCardView: View {
         ZStack(alignment: .topLeading) {
             // Card Background
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color(.systemBackground))
-                .shadow(radius: 8)
+                .fill(CleanerTheme.cardBackground)
+                .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 6)
 
             // Image
             if let image = image {
@@ -240,6 +257,7 @@ struct SwipeCardView: View {
                     .cornerRadius(20)
             } else {
                 ProgressView()
+                    .tint(CleanerTheme.iconGray)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
@@ -280,10 +298,17 @@ struct SwipeCardView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 64))
-                            .foregroundColor(.green)
-                            .padding()
+                        ZStack {
+                            Circle()
+                                .fill(CleanerTheme.accentGreen.opacity(0.3))
+                                .frame(width: 80, height: 80)
+                                .blur(radius: 10)
+
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 64))
+                                .foregroundColor(CleanerTheme.accentGreen)
+                        }
+                        .padding()
                     }
                     Spacer()
                 }
@@ -294,10 +319,17 @@ struct SwipeCardView: View {
             if offset.width > 50 {
                 VStack {
                     HStack {
-                        Image(systemName: "trash.circle.fill")
-                            .font(.system(size: 64))
-                            .foregroundColor(.red)
-                            .padding()
+                        ZStack {
+                            Circle()
+                                .fill(CleanerTheme.accentRed.opacity(0.3))
+                                .frame(width: 80, height: 80)
+                                .blur(radius: 10)
+
+                            Image(systemName: "trash.circle.fill")
+                                .font(.system(size: 64))
+                                .foregroundColor(CleanerTheme.accentRed)
+                        }
+                        .padding()
                         Spacer()
                     }
                     Spacer()
@@ -516,9 +548,9 @@ struct StatBadge: View {
                 .fontWeight(.semibold)
         }
         .foregroundColor(color)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(color.opacity(0.1))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.15))
         .cornerRadius(12)
     }
 }

@@ -15,126 +15,215 @@ struct SettingsView: View {
     @State private var showingPaywall = false
 
     var body: some View {
-        List {
-            // Subscription Section
-            Section {
-                if revenueCat.isProUser {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Pro Member")
-                                .font(.headline)
-                            Text("Thank you for your support!")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+        ZStack {
+            CleanerTheme.background.ignoresSafeArea()
 
-                        Spacer()
-
-                        Image(systemName: "crown.fill")
-                            .foregroundColor(.yellow)
-                    }
-                } else {
-                    Button(action: {
-                        showingPaywall = true
-                    }) {
+            List {
+                // Subscription Section
+                Section {
+                    if revenueCat.isProUser {
                         HStack {
+                            ZStack {
+                                Circle()
+                                    .fill(CleanerTheme.accent.opacity(0.15))
+                                    .frame(width: 48, height: 48)
+
+                                Image(systemName: "crown.fill")
+                                    .foregroundColor(CleanerTheme.iconGray)
+                                    .font(.system(size: 20, weight: .semibold))
+                            }
+
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Upgrade to Pro")
-                                    .font(.headline)
-                                Text("Unlock all features")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                Text("Pro Member")
+                                    .cleanerFont(.headline)
+                                    .foregroundColor(CleanerTheme.textPrimary)
+                                Text("Thank you for your support!")
+                                    .cleanerFont(.caption)
+                                    .foregroundColor(CleanerTheme.textSecondary)
                             }
 
                             Spacer()
+                        }
+                    } else {
+                        Button(action: {
+                            showingPaywall = true
+                        }) {
+                            HStack {
+                                ZStack {
+                                    Circle()
+                                        .fill(CleanerTheme.accent.opacity(0.15))
+                                        .frame(width: 48, height: 48)
 
-                            Image(systemName: "crown.fill")
-                                .foregroundColor(.yellow)
+                                    Image(systemName: "crown.fill")
+                                        .foregroundColor(CleanerTheme.iconGray)
+                                        .font(.system(size: 20, weight: .semibold))
+                                }
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Upgrade to Pro")
+                                        .cleanerFont(.headline)
+                                        .foregroundColor(CleanerTheme.textPrimary)
+                                    Text("Unlock all features")
+                                        .cleanerFont(.caption)
+                                        .foregroundColor(CleanerTheme.textSecondary)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(CleanerTheme.iconGray)
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
                         }
                     }
                 }
-            }
+                .listRowBackground(CleanerTheme.cardBackground)
 
-            // General Section
-            Section("General") {
-                NavigationLink(destination: Text("About")) {
-                    Label("About", systemImage: "info.circle")
-                }
-
-                NavigationLink(destination: Text("Privacy Policy")) {
-                    Label("Privacy Policy", systemImage: "hand.raised")
-                }
-
-                Button(action: {
-                    // Open app settings
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
+                // General Section
+                Section("General") {
+                    NavigationLink(destination: Text("About").foregroundColor(CleanerTheme.textPrimary)) {
+                        Label {
+                            Text("About")
+                                .foregroundColor(CleanerTheme.textPrimary)
+                        } icon: {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(CleanerTheme.iconGray)
+                        }
                     }
-                }) {
-                    Label("App Permissions", systemImage: "gear")
-                }
-            }
 
-            // Analytics Section
-            Section {
-                Toggle(isOn: $analytics.isAnalyticsEnabled) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Analytics")
-                        Text("Help improve the app by sharing anonymous usage data")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    NavigationLink(destination: Text("Privacy Policy").foregroundColor(CleanerTheme.textPrimary)) {
+                        Label {
+                            Text("Privacy Policy")
+                                .foregroundColor(CleanerTheme.textPrimary)
+                        } icon: {
+                            Image(systemName: "hand.raised")
+                                .foregroundColor(CleanerTheme.iconGray)
+                        }
+                    }
+
+                    Button(action: {
+                        // Open app settings
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        Label {
+                            Text("App Permissions")
+                                .foregroundColor(CleanerTheme.textPrimary)
+                        } icon: {
+                            Image(systemName: "gear")
+                                .foregroundColor(CleanerTheme.iconGray)
+                        }
                     }
                 }
-            } footer: {
-                Text("Analytics data is anonymous and helps us improve the app. No photos are ever transmitted.")
-            }
+                .listRowBackground(CleanerTheme.cardBackground)
 
-            // Data Section
-            Section("Data") {
-                Button(action: clearCache) {
-                    Label("Clear Cache", systemImage: "trash")
-                        .foregroundColor(.red)
-                }
-
-                Button(action: resetApp) {
-                    Label("Reset App", systemImage: "arrow.clockwise")
-                        .foregroundColor(.red)
-                }
-            }
-
-            // Support Section
-            Section("Support") {
-                Button(action: {
-                    // Open email
-                    if let url = URL(string: "mailto:support@aicleaner.app") {
-                        UIApplication.shared.open(url)
+                // Analytics Section
+                Section {
+                    Toggle(isOn: $analytics.isAnalyticsEnabled) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Analytics")
+                                .foregroundColor(CleanerTheme.textPrimary)
+                            Text("Help improve the app by sharing anonymous usage data")
+                                .cleanerFont(.caption)
+                                .foregroundColor(CleanerTheme.textSecondary)
+                        }
                     }
-                }) {
-                    Label("Contact Support", systemImage: "envelope")
+                    .tint(CleanerTheme.primary)
+                } footer: {
+                    Text("Analytics data is anonymous and helps us improve the app. No photos are ever transmitted.")
+                        .foregroundColor(CleanerTheme.textTertiary)
                 }
+                .listRowBackground(CleanerTheme.cardBackground)
 
-                Button(action: {
-                    // Rate app
-                }) {
-                    Label("Rate App", systemImage: "star")
-                }
+                // Data Section
+                Section("Data") {
+                    Button(action: clearCache) {
+                        Label {
+                            Text("Clear Cache")
+                                .foregroundColor(CleanerTheme.accentRed)
+                        } icon: {
+                            Image(systemName: "trash")
+                                .foregroundColor(CleanerTheme.accentRed)
+                        }
+                    }
 
-                NavigationLink(destination: Text("Share with Friends")) {
-                    Label("Share with Friends", systemImage: "square.and.arrow.up")
+                    Button(action: resetApp) {
+                        Label {
+                            Text("Reset App")
+                                .foregroundColor(CleanerTheme.accentRed)
+                        } icon: {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundColor(CleanerTheme.accentRed)
+                        }
+                    }
                 }
+                .listRowBackground(CleanerTheme.cardBackground)
+
+                // Support Section
+                Section("Support") {
+                    Button(action: {
+                        // Open email
+                        if let url = URL(string: "mailto:support@aicleaner.app") {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        Label {
+                            Text("Contact Support")
+                                .foregroundColor(CleanerTheme.textPrimary)
+                        } icon: {
+                            Image(systemName: "envelope")
+                                .foregroundColor(CleanerTheme.iconGray)
+                        }
+                    }
+
+                    Button(action: {
+                        // Rate app
+                    }) {
+                        Label {
+                            Text("Rate App")
+                                .foregroundColor(CleanerTheme.textPrimary)
+                        } icon: {
+                            Image(systemName: "star")
+                                .foregroundColor(CleanerTheme.iconGray)
+                        }
+                    }
+
+                    NavigationLink(destination: Text("Share with Friends").foregroundColor(CleanerTheme.textPrimary)) {
+                        Label {
+                            Text("Share with Friends")
+                                .foregroundColor(CleanerTheme.textPrimary)
+                        } icon: {
+                            Image(systemName: "square.and.arrow.up")
+                                .foregroundColor(CleanerTheme.iconGray)
+                        }
+                    }
+                }
+                .listRowBackground(CleanerTheme.cardBackground)
+
+                // App Info
+                Section {
+                    HStack {
+                        Text("Version")
+                            .foregroundColor(CleanerTheme.textPrimary)
+                        Spacer()
+                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
+                            .foregroundColor(CleanerTheme.textSecondary)
+                    }
+                }
+                .listRowBackground(CleanerTheme.cardBackground)
             }
-
-            // App Info
-            Section {
-                HStack {
-                    Text("Version")
-                    Spacer()
-                    Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
-                        .foregroundColor(.secondary)
-                }
-            }
+            .scrollContentBackground(.hidden)
         }
         .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Settings")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+            }
+        }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
         }

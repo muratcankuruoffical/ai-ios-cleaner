@@ -13,23 +13,27 @@ struct OnboardingView: View {
     @Binding var isOnboardingComplete: Bool
 
     var body: some View {
-        TabView(selection: $viewModel.currentPage) {
-            WelcomePageView()
-                .tag(0)
+        ZStack {
+            CleanerTheme.background.ignoresSafeArea()
 
-            PrivacyPageView()
-                .tag(1)
+            TabView(selection: $viewModel.currentPage) {
+                WelcomePageView()
+                    .tag(0)
 
-            PermissionPageView(
-                onPermissionGranted: {
-                    isOnboardingComplete = true
-                    AnalyticsManager.shared.logOnboardingCompleted()
-                }
-            )
-            .tag(2)
+                PrivacyPageView()
+                    .tag(1)
+
+                PermissionPageView(
+                    onPermissionGranted: {
+                        isOnboardingComplete = true
+                        AnalyticsManager.shared.logOnboardingCompleted()
+                    }
+                )
+                .tag(2)
+            }
+            .tabViewStyle(.page)
+            .indexViewStyle(.page(backgroundDisplayMode: .always))
         }
-        .tabViewStyle(.page)
-        .indexViewStyle(.page(backgroundDisplayMode: .always))
         .onAppear {
             AnalyticsManager.shared.logOnboardingStarted()
         }
@@ -40,54 +44,77 @@ struct OnboardingView: View {
 
 struct WelcomePageView: View {
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 40) {
             Spacer()
 
-            // App Icon
-            Image(systemName: "sparkles.square.filled.on.square")
-                .font(.system(size: 100))
-                .foregroundColor(.blue)
+            // App Icon with gradient
+            ZStack {
+                Circle()
+                    .fill(CleanerTheme.primaryGradient)
+                    .frame(width: 140, height: 140)
+                    .blur(radius: 40)
+
+                Circle()
+                    .fill(CleanerTheme.primary.opacity(0.2))
+                    .frame(width: 120, height: 120)
+
+                Image(systemName: "sparkles")
+                    .font(.system(size: 60, weight: .semibold))
+                    .foregroundColor(CleanerTheme.iconGray)
+            }
+            .scaleIn()
 
             VStack(spacing: 16) {
-                Text("Welcome to AI Cleaner")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                Text("Welcome to")
+                    .cleanerFont(.title2)
+                    .foregroundColor(CleanerTheme.textSecondary)
 
-                Text("Smart, on-device photo cleaning powered by AI")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                Text("AI Cleaner")
+                    .font(.system(size: 42, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+
+                Text("Smart, on-device photo cleaning\npowered by AI")
+                    .cleanerFont(.body)
+                    .foregroundColor(CleanerTheme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
+            .fadeIn(delay: 0.2)
 
             Spacer()
 
-            VStack(spacing: 16) {
-                FeatureRow(
+            VStack(spacing: 20) {
+                OnboardingFeatureRow(
                     icon: "square.on.square",
                     title: "Find Duplicates",
-                    description: "Automatically detect similar photos"
+                    description: "Automatically detect similar photos",
+                    color: CleanerTheme.primary
                 )
+                .fadeIn(delay: 0.3)
 
-                FeatureRow(
+                OnboardingFeatureRow(
                     icon: "eye.slash",
                     title: "Detect Blurry Photos",
-                    description: "Identify low-quality images"
+                    description: "Identify low-quality images",
+                    color: CleanerTheme.accent
                 )
+                .fadeIn(delay: 0.4)
 
-                FeatureRow(
-                    icon: "camera",
+                OnboardingFeatureRow(
+                    icon: "camera.viewfinder",
                     title: "Find Screenshots",
-                    description: "Organize and clean up screenshots"
+                    description: "Organize and clean up screenshots",
+                    color: CleanerTheme.accentGreen
                 )
+                .fadeIn(delay: 0.5)
             }
             .padding(.horizontal)
 
             Spacer()
 
             Text("Swipe to continue")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .cleanerFont(.caption)
+                .foregroundColor(CleanerTheme.textTertiary)
                 .padding(.bottom)
         }
     }
@@ -97,53 +124,70 @@ struct WelcomePageView: View {
 
 struct PrivacyPageView: View {
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 40) {
             Spacer()
 
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 100))
-                .foregroundColor(.green)
+            // Privacy Icon
+            ZStack {
+                Circle()
+                    .fill(CleanerTheme.accentGreen.opacity(0.2))
+                    .frame(width: 140, height: 140)
+                    .blur(radius: 40)
+
+                Circle()
+                    .fill(CleanerTheme.accentGreen.opacity(0.15))
+                    .frame(width: 120, height: 120)
+
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 60, weight: .semibold))
+                    .foregroundColor(CleanerTheme.iconGray)
+            }
+            .scaleIn()
 
             VStack(spacing: 16) {
-                Text("Your Privacy Matters")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                Text("Your Privacy")
+                    .font(.system(size: 42, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
 
                 Text("All analysis happens on your device")
-                    .font(.title3)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.title2)
+                    .foregroundColor(CleanerTheme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
+            .fadeIn(delay: 0.2)
 
             Spacer()
 
             VStack(spacing: 20) {
-                PrivacyFeatureRow(
+                PrivacyFeatureCard(
                     icon: "iphone",
                     title: "100% On-Device",
                     description: "Your photos never leave your device"
                 )
+                .fadeIn(delay: 0.3)
 
-                PrivacyFeatureRow(
+                PrivacyFeatureCard(
                     icon: "xmark.shield",
                     title: "No Cloud Upload",
                     description: "Zero data transmitted to servers"
                 )
+                .fadeIn(delay: 0.4)
 
-                PrivacyFeatureRow(
+                PrivacyFeatureCard(
                     icon: "person.badge.shield.checkmark",
                     title: "Complete Privacy",
                     description: "No one can access your photos but you"
                 )
+                .fadeIn(delay: 0.5)
             }
             .padding(.horizontal)
 
             Spacer()
 
             Text("Swipe to continue")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .cleanerFont(.caption)
+                .foregroundColor(CleanerTheme.textTertiary)
                 .padding(.bottom)
         }
     }
@@ -156,71 +200,77 @@ struct PermissionPageView: View {
     let onPermissionGranted: () -> Void
 
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 40) {
             Spacer()
 
-            Image(systemName: "photo.stack")
-                .font(.system(size: 100))
-                .foregroundColor(.purple)
+            // Photo Icon
+            ZStack {
+                Circle()
+                    .fill(CleanerTheme.accent.opacity(0.2))
+                    .frame(width: 140, height: 140)
+                    .blur(radius: 40)
+
+                Circle()
+                    .fill(CleanerTheme.accent.opacity(0.15))
+                    .frame(width: 120, height: 120)
+
+                Image(systemName: "photo.stack")
+                    .font(.system(size: 60, weight: .semibold))
+                    .foregroundColor(CleanerTheme.iconGray)
+            }
+            .scaleIn()
 
             VStack(spacing: 16) {
                 Text("Access Your Photos")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                    .font(.system(size: 38, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
 
-                Text("We need access to analyze and clean your photo library")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                Text("We need access to analyze and clean\nyour photo library")
+                    .cleanerFont(.body)
+                    .foregroundColor(CleanerTheme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
+            .fadeIn(delay: 0.2)
 
             Spacer()
 
             VStack(spacing: 16) {
-                InfoRow(
-                    icon: "checkmark.circle.fill",
-                    text: "Scan for duplicates and similar photos"
-                )
-
-                InfoRow(
-                    icon: "checkmark.circle.fill",
-                    text: "Detect blurry and low-quality images"
-                )
-
-                InfoRow(
-                    icon: "checkmark.circle.fill",
-                    text: "Find screenshots and large videos"
-                )
-
-                InfoRow(
-                    icon: "checkmark.circle.fill",
-                    text: "Safely delete unwanted photos"
-                )
+                PermissionCheckRow(text: "Scan for duplicates and similar photos")
+                    .fadeIn(delay: 0.3)
+                PermissionCheckRow(text: "Detect blurry and low-quality images")
+                    .fadeIn(delay: 0.4)
+                PermissionCheckRow(text: "Find screenshots and large videos")
+                    .fadeIn(delay: 0.5)
+                PermissionCheckRow(text: "Safely delete unwanted photos")
+                    .fadeIn(delay: 0.6)
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 32)
 
             Spacer()
 
             Button(action: requestPermission) {
-                HStack {
+                HStack(spacing: 12) {
                     if isRequesting {
                         ProgressView()
                             .progressViewStyle(.circular)
                             .tint(.white)
                     } else {
+                        Image(systemName: "photo.badge.checkmark")
+                            .font(.system(size: 18, weight: .semibold))
                         Text("Grant Photo Access")
-                            .fontWeight(.semibold)
+                            .font(.system(size: 18, weight: .semibold))
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
                 .foregroundColor(.white)
-                .cornerRadius(12)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(CleanerTheme.primaryGradient)
+                .cornerRadius(16)
             }
             .disabled(isRequesting)
-            .padding(.horizontal)
+            .padding(.horizontal, 32)
+            .scaleIn(delay: 0.7)
             .padding(.bottom, 32)
         }
     }
@@ -248,72 +298,86 @@ struct PermissionPageView: View {
 
 // MARK: - Helper Views
 
-struct FeatureRow: View {
+struct OnboardingFeatureRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(CleanerTheme.iconGray)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .cleanerFont(.headline)
+                    .foregroundColor(CleanerTheme.textPrimary)
+                Text(description)
+                    .cleanerFont(.caption)
+                    .foregroundColor(CleanerTheme.textSecondary)
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .background(CleanerTheme.cardBackground)
+        .cornerRadius(16)
+    }
+}
+
+struct PrivacyFeatureCard: View {
     let icon: String
     let title: String
     let description: String
 
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.blue)
-                .frame(width: 32)
+            ZStack {
+                Circle()
+                    .fill(CleanerTheme.accentGreen.opacity(0.15))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(CleanerTheme.iconGray)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .cleanerFont(.headline)
+                    .foregroundColor(CleanerTheme.textPrimary)
                 Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.caption)
+                    .foregroundColor(CleanerTheme.textSecondary)
             }
 
             Spacer()
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(12)
+        .padding(16)
+        .background(CleanerTheme.cardBackground)
+        .cornerRadius(16)
     }
 }
 
-struct PrivacyFeatureRow: View {
-    let icon: String
-    let title: String
-    let description: String
-
-    var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.green)
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
-        }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(12)
-    }
-}
-
-struct InfoRow: View {
-    let icon: String
+struct PermissionCheckRow: View {
     let text: String
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundColor(.green)
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(CleanerTheme.accentGreen)
+                .font(.system(size: 20, weight: .semibold))
             Text(text)
-                .font(.body)
+                .cleanerFont(.body)
+                .foregroundColor(CleanerTheme.textPrimary)
             Spacer()
         }
     }

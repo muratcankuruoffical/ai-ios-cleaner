@@ -17,29 +17,46 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    headerView
+            ZStack {
+                // Dark background
+                CleanerTheme.background.ignoresSafeArea()
 
-                    // Scan Button or Results
-                    if let results = scanCoordinator.scanResults {
-                        resultsCard(results)
-                    } else {
-                        scanPromptCard
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        // Header
+                        headerView
+                            .fadeIn(delay: 0.1)
+
+                        // Main Content
+                        if let results = scanCoordinator.scanResults {
+                            // Storage Overview with Donut Chart
+                            storageOverviewCard(results)
+                                .scaleIn(delay: 0.2)
+
+                            // Quick Stats Grid
+                            quickStatsView(results)
+                                .fadeIn(delay: 0.3)
+
+                            // View Smart Albums Button
+                            viewAlbumsButton
+                                .scaleIn(delay: 0.4)
+                        } else {
+                            // Scan Prompt Card
+                            scanPromptCard
+                                .scaleIn(delay: 0.2)
+                        }
+
+                        // Recent Activity
+                        if scanCoordinator.scanResults != nil {
+                            recentActivityView
+                                .fadeIn(delay: 0.5)
+                        }
                     }
-
-                    // Quick Stats
-                    if let results = scanCoordinator.scanResults {
-                        quickStatsView(results)
-                    }
-
-                    // Recent Activity
-                    recentActivityView
+                    .padding()
                 }
-                .padding()
             }
-            .navigationTitle("AI Cleaner")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingScanProgress) {
                 ScanProgressView(coordinator: scanCoordinator)
             }
@@ -75,128 +92,159 @@ struct DashboardView: View {
 
     private var headerView: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Hello!")
-                    .font(.title)
-                    .fontWeight(.bold)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("AI Cleaner")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+
                 Text("Keep your photos organized")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.subheadline)
+                    .foregroundColor(CleanerTheme.textSecondary)
             }
 
             Spacer()
 
+            // Settings Button
             NavigationLink(destination: SettingsView()) {
                 Image(systemName: "gearshape.fill")
                     .font(.title2)
-                    .foregroundColor(.gray)
+                    .foregroundColor(CleanerTheme.iconGray)
+                    .frame(width: 44, height: 44)
+                    .background(CleanerTheme.surface)
+                    .clipShape(Circle())
             }
         }
     }
 
-    // MARK: - Scan Prompt Card
+    // MARK: - Storage Overview Card
 
-    private var scanPromptCard: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 60))
-                .foregroundColor(.blue)
-
-            VStack(spacing: 8) {
-                Text("Start Smart Scan")
-                    .font(.title2)
-                    .fontWeight(.bold)
-
-                Text("Analyze your photo library for duplicates, blurry photos, and more")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            Button(action: {
-                scanCoordinator.startScan()
-            }) {
-                Text("Start Scan")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
-        }
-        .padding()
-        .background(Color.blue.opacity(0.1))
-        .cornerRadius(16)
-    }
-
-    // MARK: - Results Card
-
-    private func resultsCard(_ results: ScanCoordinator.ScanResults) -> some View {
-        VStack(spacing: 16) {
+    private func storageOverviewCard(_ results: ScanCoordinator.ScanResults) -> some View {
+        VStack(spacing: 20) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Last Scan Results")
-                        .font(.headline)
-                    Text("Found \(results.statistics.totalDuplicates) items")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                Text("Storage Analysis")
+                    .cleanerFont(.headline)
+                    .foregroundColor(CleanerTheme.textPrimary)
 
                 Spacer()
 
                 Button(action: {
                     scanCoordinator.startScan()
                 }) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.title3)
-                        .foregroundColor(.blue)
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Rescan")
+                            .cleanerFont(.callout)
+                    }
+                    .foregroundColor(CleanerTheme.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(CleanerTheme.primary.opacity(0.15))
+                    .cornerRadius(12)
                 }
             }
 
-            Divider()
+            // Donut Chart
+            DonutChart(
+                value: min(Double(results.potentialSavingsBytes) / Double(results.potentialSavingsBytes + 10_000_000_000), 0.95),
+                total: formatBytes(results.potentialSavingsBytes + 10_000_000_000),
+                used: results.formattedSavings,
+                title: "Can Be Freed"
+            )
 
+            // Stats Row
             HStack(spacing: 20) {
-                VStack(spacing: 8) {
-                    Text(results.formattedSavings)
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.blue)
-                    Text("Potential Savings")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                VStack(spacing: 4) {
+                    Text("\(results.totalPhotos)")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(CleanerTheme.accentGreen)
+                    Text("Photos")
+                        .cleanerFont(.caption)
+                        .foregroundColor(CleanerTheme.textSecondary)
                 }
+                .frame(maxWidth: .infinity)
 
                 Divider()
                     .frame(height: 40)
+                    .background(CleanerTheme.surface)
 
-                VStack(spacing: 8) {
-                    Text("\(results.totalPhotos)")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.green)
-                    Text("Photos Scanned")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                VStack(spacing: 4) {
+                    Text("\(results.statistics.totalDuplicates)")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(CleanerTheme.accent)
+                    Text("Issues Found")
+                        .cleanerFont(.caption)
+                        .foregroundColor(CleanerTheme.textSecondary)
                 }
-            }
-
-            Button(action: {
-                showingSmartAlbums = true
-            }) {
-                Text("View Smart Albums")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                .frame(maxWidth: .infinity)
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(radius: 4)
+        .padding(24)
+        .cleanerCard()
+    }
+
+    // MARK: - Scan Prompt Card
+
+    private var scanPromptCard: some View {
+        VStack(spacing: 24) {
+            // Icon with gradient
+            ZStack {
+                Circle()
+                    .fill(CleanerTheme.primaryGradient)
+                    .frame(width: 100, height: 100)
+                    .blur(radius: 30)
+                    .opacity(0.6)
+
+                Image(systemName: "sparkles")
+                    .font(.system(size: 50))
+                    .foregroundColor(CleanerTheme.iconGray)
+            }
+            .pulse()
+
+            VStack(spacing: 12) {
+                Text("Start Smart Scan")
+                    .cleanerFont(.title2)
+                    .foregroundColor(CleanerTheme.textPrimary)
+
+                Text("Analyze your photo library for duplicates, blurry photos, and more using AI")
+                    .cleanerFont(.body)
+                    .foregroundColor(CleanerTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+            }
+
+            // Scan Button
+            Button(action: {
+                scanCoordinator.startScan()
+            }) {
+                HStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text("Start Scan")
+                        .font(.system(size: 18, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(CleanerTheme.primaryGradient)
+                .cornerRadius(16)
+            }
+            .padding(.horizontal, 20)
+
+            // Features Grid
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                FeatureTag(icon: "square.on.square", title: "Duplicates")
+                FeatureTag(icon: "eye.slash", title: "Blurry")
+                FeatureTag(icon: "moon", title: "Dark Photos")
+                FeatureTag(icon: "camera.viewfinder", title: "Screenshots")
+            }
+            .padding(.horizontal, 20)
+        }
+        .padding(.vertical, 32)
+        .cleanerCard()
     }
 
     // MARK: - Quick Stats
@@ -204,40 +252,71 @@ struct DashboardView: View {
     private func quickStatsView(_ results: ScanCoordinator.ScanResults) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Categories")
-                .font(.headline)
+                .cleanerFont(.headline)
+                .foregroundColor(CleanerTheme.textPrimary)
+                .padding(.horizontal, 4)
 
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible())
             ], spacing: 16) {
-                StatCard(
+                AnimatedStatCard(
                     icon: "square.on.square",
                     title: "Duplicates",
                     value: "\(results.statistics.totalDuplicates)",
-                    color: .blue
+                    color: CleanerTheme.primary,
+                    delay: 0.1
                 )
 
-                StatCard(
+                AnimatedStatCard(
                     icon: "eye.slash",
                     title: "Blurry",
                     value: "\(results.blurryPhotos.count)",
-                    color: .orange
+                    color: CleanerTheme.accent,
+                    delay: 0.2
                 )
 
-                StatCard(
+                AnimatedStatCard(
                     icon: "moon",
                     title: "Dark",
                     value: "\(results.darkPhotos.count)",
-                    color: .purple
+                    color: CleanerTheme.accentGreen,
+                    delay: 0.3
                 )
 
-                StatCard(
+                AnimatedStatCard(
                     icon: "camera.viewfinder",
                     title: "Screenshots",
                     value: "\(results.screenshots.count)",
-                    color: .green
+                    color: CleanerTheme.accentRed,
+                    delay: 0.4
                 )
             }
+        }
+    }
+
+    // MARK: - View Albums Button
+
+    private var viewAlbumsButton: some View {
+        Button(action: {
+            showingSmartAlbums = true
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "photo.stack")
+                    .font(.system(size: 18, weight: .semibold))
+                Text("View Smart Albums")
+                    .font(.system(size: 18, weight: .semibold))
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .padding(.vertical, 18)
+            .padding(.horizontal, 24)
+            .background(CleanerTheme.primaryGradient)
+            .cornerRadius(16)
         }
     }
 
@@ -246,55 +325,110 @@ struct DashboardView: View {
     private var recentActivityView: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Recent Activity")
-                .font(.headline)
+                .cleanerFont(.headline)
+                .foregroundColor(CleanerTheme.textPrimary)
+                .padding(.horizontal, 4)
 
             VStack(spacing: 12) {
                 ActivityRow(
                     icon: "checkmark.circle.fill",
                     title: "Scan completed",
-                    subtitle: "Today at 10:30 AM",
-                    color: .green
+                    subtitle: "Just now",
+                    color: CleanerTheme.accentGreen
                 )
 
                 ActivityRow(
-                    icon: "trash.circle.fill",
-                    title: "Deleted 45 photos",
-                    subtitle: "Yesterday",
-                    color: .red
+                    icon: "photo.stack.fill",
+                    title: "\(scanCoordinator.scanResults?.totalPhotos ?? 0) photos analyzed",
+                    subtitle: "AI detection complete",
+                    color: CleanerTheme.primary
                 )
             }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
+            .padding(16)
+            .background(CleanerTheme.cardBackground)
+            .cornerRadius(16)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        let gb = Double(bytes) / (1024 * 1024 * 1024)
+        if gb >= 1.0 {
+            return String(format: "%.1f GB", gb)
+        } else {
+            let mb = Double(bytes) / (1024 * 1024)
+            return String(format: "%.0f MB", mb)
         }
     }
 }
 
-// MARK: - Stat Card
+// MARK: - Animated Stat Card
 
-struct StatCard: View {
+struct AnimatedStatCard: View {
     let icon: String
     let title: String
     let value: String
     let color: Color
+    let delay: Double
+
+    @State private var showValue = false
 
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title)
-                .foregroundColor(color)
+        VStack(spacing: 16) {
+            // Icon with background
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 56, height: 56)
 
-            Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(CleanerTheme.iconGray)
+            }
 
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+            VStack(spacing: 6) {
+                Text(showValue ? value : "0")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: showValue)
+
+                Text(title)
+                    .cleanerFont(.caption)
+                    .foregroundColor(CleanerTheme.textSecondary)
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding()
-        .background(color.opacity(0.1))
+        .padding(.vertical, 20)
+        .background(CleanerTheme.cardBackground)
+        .cornerRadius(20)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                showValue = true
+            }
+        }
+    }
+}
+
+// MARK: - Feature Tag
+
+struct FeatureTag: View {
+    let icon: String
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(CleanerTheme.iconGray)
+
+            Text(title)
+                .cleanerFont(.callout)
+                .foregroundColor(CleanerTheme.textSecondary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(CleanerTheme.surface)
         .cornerRadius(12)
     }
 }
@@ -310,14 +444,19 @@ struct ActivityRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(color)
+                .frame(width: 40, height: 40)
+                .background(color.opacity(0.15))
+                .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.body)
+                    .cleanerFont(.subheadline)
+                    .foregroundColor(CleanerTheme.textPrimary)
                 Text(subtitle)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .cleanerFont(.caption)
+                    .foregroundColor(CleanerTheme.textSecondary)
             }
 
             Spacer()
