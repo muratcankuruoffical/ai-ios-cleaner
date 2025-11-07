@@ -62,10 +62,8 @@ struct DashboardView: View {
                         }
 
                         // Recent Activity
-                        if scanCoordinator.scanResults != nil {
-                            recentActivityView
-                                .transition(.scale.combined(with: .opacity))
-                        }
+                        recentActivityView
+                            .transition(.scale.combined(with: .opacity))
 
                         // System Health
                         systemHealthView
