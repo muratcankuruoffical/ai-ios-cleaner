@@ -14,6 +14,8 @@ struct DashboardView: View {
     @State private var showingScanProgress = false
     @State private var showingResults = false
     @State private var showingSmartAlbums = false
+    @State private var showingContactsPermissionAlert = false
+    @State private var showingCalendarPermissionAlert = false
 
     var body: some View {
         NavigationView {
@@ -33,9 +35,6 @@ struct DashboardView: View {
                     if let results = scanCoordinator.scanResults {
                         quickStatsView(results)
                     }
-
-                    // Additional Categories (Always Visible)
-                    additionalCategoriesView
 
                     // Recent Activity
                     recentActivityView
@@ -76,6 +75,26 @@ struct DashboardView: View {
                 default:
                     break
                 }
+            }
+            .alert("Contacts Permission Required", isPresented: $showingContactsPermissionAlert) {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Please grant Contacts permission in Settings to scan for duplicate contacts.")
+            }
+            .alert("Calendar Permission Required", isPresented: $showingCalendarPermissionAlert) {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Please grant Calendar permission in Settings to scan for old events.")
             }
         }
     }
@@ -274,6 +293,32 @@ struct DashboardView: View {
                     value: "\(results.documents.count)",
                     color: .indigo
                 )
+
+                // Contacts Card
+                Button(action: {
+                    handleContactsCardTap(results: results)
+                }) {
+                    StatCard(
+                        icon: "person.2.fill",
+                        title: "Duplicate Contacts",
+                        value: "\(results.contactsResults?.totalDuplicates ?? 0)",
+                        color: .brown
+                    )
+                }
+                .buttonStyle(.plain)
+
+                // Calendar Card
+                Button(action: {
+                    handleCalendarCardTap(results: results)
+                }) {
+                    StatCard(
+                        icon: "calendar.badge.clock",
+                        title: "Old Events",
+                        value: "\(results.calendarResults?.totalCleanableEvents ?? 0)",
+                        color: .teal
+                    )
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -468,98 +513,30 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - Additional Categories
+    // MARK: - Card Tap Handlers
 
-    private var additionalCategoriesView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Other Categories")
-                .font(.headline)
-
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 16) {
-                // Contacts Card
-                contactsCard
-
-                // Calendar Card
-                calendarCard
-            }
-        }
-    }
-
-    private var contactsCard: some View {
+    private func handleContactsCardTap(results: ScanCoordinator.ScanResults) {
         let contactsAuth = ContactsCleaner.shared.checkAuthorizationStatus()
-        let hasResults = scanCoordinator.scanResults?.contactsResults != nil
-        let count = scanCoordinator.scanResults?.contactsResults?.totalDuplicates ?? 0
 
-        let displayValue: String
-        let needsPermission = contactsAuth != .authorized
-
-        if needsPermission {
-            displayValue = "🔒"
-        } else if !hasResults {
-            displayValue = "—"
-        } else {
-            displayValue = "\(count)"
+        if contactsAuth != .authorized {
+            // Show permission alert
+            showingContactsPermissionAlert = true
+        } else if let contactsResults = results.contactsResults, contactsResults.totalDuplicates > 0 {
+            // Navigate to contacts view
+            showingSmartAlbums = true
         }
-
-        return Button(action: {
-            if needsPermission {
-                // Request permission
-                Task {
-                    _ = await ContactsCleaner.shared.requestAuthorization()
-                }
-            } else if hasResults {
-                // Open contacts view
-                // TODO: Navigate to contacts
-            }
-        }) {
-            StatCard(
-                icon: "person.2.fill",
-                title: needsPermission ? "Contacts (Locked)" : "Duplicate Contacts",
-                value: displayValue,
-                color: .brown
-            )
-        }
-        .buttonStyle(.plain)
     }
 
-    private var calendarCard: some View {
+    private func handleCalendarCardTap(results: ScanCoordinator.ScanResults) {
         let calendarAuth = CalendarCleaner.shared.checkAuthorizationStatus(for: .event)
-        let hasResults = scanCoordinator.scanResults?.calendarResults != nil
-        let count = scanCoordinator.scanResults?.calendarResults?.totalCleanableEvents ?? 0
 
-        let displayValue: String
-        let needsPermission = calendarAuth != .authorized
-
-        if needsPermission {
-            displayValue = "🔒"
-        } else if !hasResults {
-            displayValue = "—"
-        } else {
-            displayValue = "\(count)"
+        if calendarAuth != .authorized {
+            // Show permission alert
+            showingCalendarPermissionAlert = true
+        } else if let calendarResults = results.calendarResults, calendarResults.totalCleanableEvents > 0 {
+            // Navigate to calendar view
+            showingSmartAlbums = true
         }
-
-        return Button(action: {
-            if needsPermission {
-                // Request permission
-                Task {
-                    _ = await CalendarCleaner.shared.requestAuthorization(for: .event)
-                }
-            } else if hasResults {
-                // Open calendar view
-                // TODO: Navigate to calendar
-            }
-        }) {
-            StatCard(
-                icon: "calendar.badge.clock",
-                title: needsPermission ? "Calendar (Locked)" : "Old Events",
-                value: displayValue,
-                color: .teal
-            )
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Storage Recommendations
