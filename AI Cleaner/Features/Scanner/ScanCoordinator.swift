@@ -19,6 +19,7 @@ class ScanCoordinator: ObservableObject {
     @Published var scanState: ScanState = .idle
     @Published var progress: ScanProgress = ScanProgress()
     @Published var scanResults: ScanResults?
+    @Published var deletedAssetIds: Set<String> = [] // Track deleted photos for real-time updates
 
     // MARK: - Services
 
@@ -122,6 +123,7 @@ class ScanCoordinator: ObservableObject {
         sessionId = UUID()
         scanState = .scanning
         scanResults = nil
+        resetDeletedAssets() // Clear deleted assets tracking for new scan
 
         let startTime = Date()
         AnalyticsManager.shared.logScanStarted(photoCount: 0)
@@ -164,6 +166,20 @@ class ScanCoordinator: ObservableObject {
     func cancelScan() {
         scanTask?.cancel()
         scanState = .cancelled
+    }
+
+    /// Mark assets as deleted to update UI counts in real-time
+    func markAssetsAsDeleted(_ assets: [PHAsset]) {
+        print("🗑️ [ScanCoordinator] Marking \(assets.count) assets as deleted")
+        let ids = Set(assets.map { $0.localIdentifier })
+        deletedAssetIds.formUnion(ids)
+        print("🗑️ [ScanCoordinator] Total deleted assets: \(deletedAssetIds.count)")
+    }
+
+    /// Reset deleted assets tracking (e.g., when starting new scan)
+    func resetDeletedAssets() {
+        print("🔄 [ScanCoordinator] Resetting deleted assets tracking")
+        deletedAssetIds.removeAll()
     }
 
     // MARK: - Main Scan Logic

@@ -12,6 +12,7 @@ internal import Combine
 struct SwipeDeckView: View {
     @StateObject private var viewModel: SwipeDeckViewModel
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var scanCoordinator: ScanCoordinator
 
     init(assets: [PHAsset], category: String) {
         _viewModel = StateObject(wrappedValue: SwipeDeckViewModel(assets: assets, category: category))
@@ -61,7 +62,7 @@ struct SwipeDeckView: View {
             Button("Cancel", role: .cancel) { }
             Button("Delete \(viewModel.toDelete.count)", role: .destructive) {
                 Task {
-                    await viewModel.performDeletion()
+                    await viewModel.performDeletion(scanCoordinator: scanCoordinator)
                 }
             }
         } message: {
@@ -514,7 +515,7 @@ class SwipeDeckViewModel: ObservableObject {
         }
     }
 
-    func performDeletion() async {
+    func performDeletion(scanCoordinator: ScanCoordinator?) async {
         print("🗑️ [SwipeDeck] Starting deletion - count: \(toDelete.count), category: \(category)")
         AnalyticsManager.shared.logCleanupStarted(itemCount: toDelete.count, category: category)
 
@@ -535,7 +536,7 @@ class SwipeDeckViewModel: ObservableObject {
                 bytesFreed: freedBytes
             )
 
-            // Log activity to CoreData
+            // Log activity to CoreData and update scan coordinator
             await MainActor.run {
                 print("🗑️ [SwipeDeck] Creating ActivityLog on MainActor")
                 let context = CoreDataStack.shared.viewContext
@@ -549,6 +550,11 @@ class SwipeDeckViewModel: ObservableObject {
                 print("🗑️ [SwipeDeck] Saving context...")
                 CoreDataStack.shared.save(context: context)
                 print("🗑️ [SwipeDeck] Context saved successfully")
+
+                // Update scan coordinator to track deleted assets
+                if let coordinator = scanCoordinator {
+                    coordinator.markAssetsAsDeleted(toDelete)
+                }
             }
 
             toDelete.removeAll()

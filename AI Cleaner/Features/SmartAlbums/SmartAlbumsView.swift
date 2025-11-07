@@ -10,15 +10,61 @@ import Photos
 
 struct SmartAlbumsView: View {
     let scanResults: ScanCoordinator.ScanResults
+    @EnvironmentObject var scanCoordinator: ScanCoordinator
     @State private var selectedAlbum: AlbumType?
+
+    // Filter deleted assets from results
+    private var filteredSimilarGroups: [SimilarityService.SimilarityGroup] {
+        scanResults.similarGroups.compactMap { group in
+            let remaining = group.assets.filter { !scanCoordinator.deletedAssetIds.contains($0.localIdentifier) }
+            guard remaining.count > 1 else { return nil } // Need at least 2 photos for similarity
+            return SimilarityService.SimilarityGroup(id: group.id, assets: remaining, score: group.score)
+        }
+    }
+
+    private var filteredBlurryPhotos: [(asset: PHAsset, score: Float)] {
+        scanResults.blurryPhotos.filter { !scanCoordinator.deletedAssetIds.contains($0.asset.localIdentifier) }
+    }
+
+    private var filteredDarkPhotos: [(asset: PHAsset, score: Float)] {
+        scanResults.darkPhotos.filter { !scanCoordinator.deletedAssetIds.contains($0.asset.localIdentifier) }
+    }
+
+    private var filteredScreenshots: [PHAsset] {
+        scanResults.screenshots.filter { !scanCoordinator.deletedAssetIds.contains($0.localIdentifier) }
+    }
+
+    private var filteredLargeVideos: [VideoAnalyzer.VideoInfo] {
+        scanResults.largeVideos.filter { !scanCoordinator.deletedAssetIds.contains($0.asset.localIdentifier) }
+    }
+
+    private var filteredSimilarVideoGroups: [VideoAnalyzer.SimilarVideoGroup] {
+        scanResults.similarVideoGroups.compactMap { group in
+            let remaining = group.videos.filter { !scanCoordinator.deletedAssetIds.contains($0.asset.localIdentifier) }
+            guard remaining.count > 1 else { return nil }
+            return VideoAnalyzer.SimilarVideoGroup(videos: remaining, similarity: group.similarity)
+        }
+    }
+
+    private var filteredOptimizablePhotos: [PhotoOptimizer.OptimizablePhoto] {
+        scanResults.optimizablePhotos.filter { !scanCoordinator.deletedAssetIds.contains($0.asset.localIdentifier) }
+    }
+
+    private var filteredDocuments: [DocumentDetector.DocumentDetectionResult] {
+        scanResults.documents.filter { !scanCoordinator.deletedAssetIds.contains($0.asset.localIdentifier) }
+    }
+
+    private var totalDuplicatesCount: Int {
+        filteredSimilarGroups.reduce(0) { $0 + $1.assets.count }
+    }
 
     var body: some View {
         List {
             Section("Categories") {
-                if !scanResults.similarGroups.isEmpty {
+                if !filteredSimilarGroups.isEmpty {
                     AlbumRow(
                         type: .duplicates,
-                        count: scanResults.statistics.totalDuplicates,
+                        count: totalDuplicatesCount,
                         icon: "square.on.square",
                         color: .blue
                     )
@@ -27,10 +73,10 @@ struct SmartAlbumsView: View {
                     }
                 }
 
-                if !scanResults.blurryPhotos.isEmpty {
+                if !filteredBlurryPhotos.isEmpty {
                     AlbumRow(
                         type: .blurry,
-                        count: scanResults.blurryPhotos.count,
+                        count: filteredBlurryPhotos.count,
                         icon: "eye.slash",
                         color: .orange
                     )
@@ -39,10 +85,10 @@ struct SmartAlbumsView: View {
                     }
                 }
 
-                if !scanResults.darkPhotos.isEmpty {
+                if !filteredDarkPhotos.isEmpty {
                     AlbumRow(
                         type: .dark,
-                        count: scanResults.darkPhotos.count,
+                        count: filteredDarkPhotos.count,
                         icon: "moon",
                         color: .purple
                     )
@@ -51,10 +97,10 @@ struct SmartAlbumsView: View {
                     }
                 }
 
-                if !scanResults.screenshots.isEmpty {
+                if !filteredScreenshots.isEmpty {
                     AlbumRow(
                         type: .screenshots,
-                        count: scanResults.screenshots.count,
+                        count: filteredScreenshots.count,
                         icon: "camera.viewfinder",
                         color: .green
                     )
@@ -63,10 +109,10 @@ struct SmartAlbumsView: View {
                     }
                 }
 
-                if !scanResults.largeVideos.isEmpty {
+                if !filteredLargeVideos.isEmpty {
                     AlbumRow(
                         type: .largeVideos,
-                        count: scanResults.largeVideos.count,
+                        count: filteredLargeVideos.count,
                         icon: "video.fill",
                         color: .red
                     )
@@ -75,10 +121,10 @@ struct SmartAlbumsView: View {
                     }
                 }
 
-                if !scanResults.similarVideoGroups.isEmpty {
+                if !filteredSimilarVideoGroups.isEmpty {
                     AlbumRow(
                         type: .similarVideos,
-                        count: scanResults.similarVideoGroups.reduce(0) { $0 + $1.videos.count },
+                        count: filteredSimilarVideoGroups.reduce(0) { $0 + $1.videos.count },
                         icon: "video.badge.plus",
                         color: .pink
                     )
@@ -87,10 +133,10 @@ struct SmartAlbumsView: View {
                     }
                 }
 
-                if !scanResults.optimizablePhotos.isEmpty {
+                if !filteredOptimizablePhotos.isEmpty {
                     AlbumRow(
                         type: .optimizable,
-                        count: scanResults.optimizablePhotos.count,
+                        count: filteredOptimizablePhotos.count,
                         icon: "arrow.down.circle",
                         color: .cyan
                     )
@@ -99,10 +145,10 @@ struct SmartAlbumsView: View {
                     }
                 }
 
-                if !scanResults.documents.isEmpty {
+                if !filteredDocuments.isEmpty {
                     AlbumRow(
                         type: .documents,
-                        count: scanResults.documents.count,
+                        count: filteredDocuments.count,
                         icon: "doc.text",
                         color: .indigo
                     )
@@ -150,30 +196,30 @@ struct SmartAlbumsView: View {
     private func albumDetailView(for type: AlbumType) -> some View {
         switch type {
         case .duplicates:
-            DuplicatesAlbumView(groups: scanResults.similarGroups)
+            DuplicatesAlbumView(groups: filteredSimilarGroups)
         case .blurry:
             SimplePhotoListView(
-                photos: scanResults.blurryPhotos.map { $0.asset },
+                photos: filteredBlurryPhotos.map { $0.asset },
                 title: "Blurry Photos"
             )
         case .dark:
             SimplePhotoListView(
-                photos: scanResults.darkPhotos.map { $0.asset },
+                photos: filteredDarkPhotos.map { $0.asset },
                 title: "Dark Photos"
             )
         case .screenshots:
             SimplePhotoListView(
-                photos: scanResults.screenshots,
+                photos: filteredScreenshots,
                 title: "Screenshots"
             )
         case .largeVideos:
-            LargeVideosListView(videos: scanResults.largeVideos)
+            LargeVideosListView(videos: filteredLargeVideos)
         case .similarVideos:
-            SimilarVideosListView(groups: scanResults.similarVideoGroups)
+            SimilarVideosListView(groups: filteredSimilarVideoGroups)
         case .optimizable:
-            PhotoOptimizationView(photos: scanResults.optimizablePhotos)
+            PhotoOptimizationView(photos: filteredOptimizablePhotos)
         case .documents:
-            DocumentsListView(documents: scanResults.documents)
+            DocumentsListView(documents: filteredDocuments)
         case .contacts:
             if let contactsResults = scanResults.contactsResults {
                 ContactsCleanupView(results: contactsResults)

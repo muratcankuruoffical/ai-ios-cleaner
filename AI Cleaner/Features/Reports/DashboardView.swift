@@ -102,6 +102,7 @@ struct DashboardView: View {
                 if let results = scanCoordinator.scanResults {
                     NavigationView {
                         SmartAlbumsView(scanResults: results)
+                            .environmentObject(scanCoordinator)
                     }
                 }
             }
