@@ -16,6 +16,7 @@ struct DashboardView: View {
     @State private var showingSmartAlbums = false
     @State private var showingContactsPermissionAlert = false
     @State private var showingCalendarPermissionAlert = false
+    @State private var showingStorageRecommendations = false
 
     var body: some View {
         NavigationView {
@@ -42,6 +43,14 @@ struct DashboardView: View {
                             // View Smart Albums Button
                             viewAlbumsButton
                                 .scaleIn(delay: 0.4)
+
+                            // System Health
+                            systemHealthView
+                                .fadeIn(delay: 0.5)
+
+                            // Storage Recommendations
+                            storageRecommendationsWidget
+                                .fadeIn(delay: 0.6)
                         } else {
                             // Scan Prompt Card
                             scanPromptCard
@@ -51,26 +60,11 @@ struct DashboardView: View {
                         // Recent Activity
                         if scanCoordinator.scanResults != nil {
                             recentActivityView
-                                .fadeIn(delay: 0.5)
+                                .fadeIn(delay: 0.7)
                         }
                     }
                     .padding()
                 }
-                    // Quick Stats
-                    if let results = scanCoordinator.scanResults {
-                        quickStatsView(results)
-                    }
-
-                    // Recent Activity
-                    recentActivityView
-
-                    // System Health (Battery + Storage)
-                    systemHealthView
-
-                    // Storage Recommendations
-                    storageRecommendationsWidget
-                }
-                .padding()
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
@@ -86,6 +80,13 @@ struct DashboardView: View {
                 if let results = scanCoordinator.scanResults {
                     NavigationView {
                         SmartAlbumsView(scanResults: results)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingStorageRecommendations) {
+                if let storage = SystemInsights.shared.getStorageInfo() {
+                    NavigationView {
+                        StorageRecommendationsView(storageInfo: storage)
                     }
                 }
             }
@@ -206,7 +207,7 @@ struct DashboardView: View {
                     .background(CleanerTheme.surface)
 
                 VStack(spacing: 4) {
-                    Text("\(results.statistics.totalDuplicates)")
+                    Text("\(totalIssuesCount(results))")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(CleanerTheme.accent)
                     Text("Issues Found")
@@ -328,6 +329,79 @@ struct DashboardView: View {
                     color: CleanerTheme.accentRed,
                     delay: 0.4
                 )
+
+                // New categories with unified colors
+                if !results.largeVideos.isEmpty {
+                    AnimatedStatCard(
+                        icon: "video.fill",
+                        title: "Large Videos",
+                        value: "\(results.largeVideos.count)",
+                        color: CleanerTheme.accentRed,
+                        delay: 0.5
+                    )
+                }
+
+                if !results.similarVideoGroups.isEmpty {
+                    AnimatedStatCard(
+                        icon: "video.badge.plus",
+                        title: "Similar Videos",
+                        value: "\(results.similarVideoGroups.reduce(0) { $0 + $1.videos.count })",
+                        color: CleanerTheme.primary,
+                        delay: 0.6
+                    )
+                }
+
+                if !results.optimizablePhotos.isEmpty {
+                    AnimatedStatCard(
+                        icon: "arrow.down.circle",
+                        title: "Optimizable",
+                        value: "\(results.optimizablePhotos.count)",
+                        color: CleanerTheme.accent,
+                        delay: 0.7
+                    )
+                }
+
+                if !results.documents.isEmpty {
+                    AnimatedStatCard(
+                        icon: "doc.text",
+                        title: "Documents",
+                        value: "\(results.documents.count)",
+                        color: CleanerTheme.accentGreen,
+                        delay: 0.8
+                    )
+                }
+
+                // Contacts Card with permission check
+                if let contactsResults = results.contactsResults, contactsResults.totalDuplicates > 0 {
+                    Button(action: {
+                        handleContactsCardTap(results: results)
+                    }) {
+                        AnimatedStatCard(
+                            icon: "person.2.fill",
+                            title: "Contacts",
+                            value: "\(contactsResults.totalDuplicates)",
+                            color: CleanerTheme.primary,
+                            delay: 0.9
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // Calendar Card with permission check
+                if let calendarResults = results.calendarResults, calendarResults.totalCleanableEvents > 0 {
+                    Button(action: {
+                        handleCalendarCardTap(results: results)
+                    }) {
+                        AnimatedStatCard(
+                            icon: "calendar.badge.clock",
+                            title: "Old Events",
+                            value: "\(calendarResults.totalCleanableEvents)",
+                            color: CleanerTheme.accentGreen,
+                            delay: 1.0
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -348,62 +422,6 @@ struct DashboardView: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 16, weight: .semibold))
-                    color: .green
-                )
-
-                StatCard(
-                    icon: "video.fill",
-                    title: "Large Videos",
-                    value: "\(results.largeVideos.count)",
-                    color: .red
-                )
-
-                StatCard(
-                    icon: "video.badge.plus",
-                    title: "Similar Videos",
-                    value: "\(results.similarVideoGroups.reduce(0) { $0 + $1.videos.count })",
-                    color: .pink
-                )
-
-                StatCard(
-                    icon: "arrow.down.circle",
-                    title: "Optimizable",
-                    value: "\(results.optimizablePhotos.count)",
-                    color: .cyan
-                )
-
-                StatCard(
-                    icon: "doc.text",
-                    title: "Documents",
-                    value: "\(results.documents.count)",
-                    color: .indigo
-                )
-
-                // Contacts Card
-                Button(action: {
-                    handleContactsCardTap(results: results)
-                }) {
-                    StatCard(
-                        icon: "person.2.fill",
-                        title: "Duplicate Contacts",
-                        value: "\(results.contactsResults?.totalDuplicates ?? 0)",
-                        color: .brown
-                    )
-                }
-                .buttonStyle(.plain)
-
-                // Calendar Card
-                Button(action: {
-                    handleCalendarCardTap(results: results)
-                }) {
-                    StatCard(
-                        icon: "calendar.badge.clock",
-                        title: "Old Events",
-                        value: "\(results.calendarResults?.totalCleanableEvents ?? 0)",
-                        color: .teal
-                    )
-                }
-                .buttonStyle(.plain)
             }
             .foregroundColor(.white)
             .padding(.vertical, 18)
@@ -443,7 +461,217 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - System Health
+
+    private var systemHealthView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("System Health")
+                .cleanerFont(.headline)
+                .foregroundColor(CleanerTheme.textPrimary)
+                .padding(.horizontal, 4)
+
+            let health = SystemInsights.shared.calculateSystemHealth()
+            let battery = SystemInsights.shared.getBatteryInfo()
+            let storage = SystemInsights.shared.getStorageInfo()
+
+            // Overall Health Score
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(colorForStatus(health.statusColor).opacity(0.2))
+                            .frame(width: 56, height: 56)
+
+                        Image(systemName: health.statusIcon)
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(CleanerTheme.iconGray)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text("Grade: \(health.grade)")
+                                .cleanerFont(.title2)
+                                .foregroundColor(CleanerTheme.textPrimary)
+                            Text(gradeDescription(health.grade))
+                                .cleanerFont(.caption)
+                                .foregroundColor(CleanerTheme.textSecondary)
+                        }
+                        Text("\(health.overallScore)% Overall Health")
+                            .cleanerFont(.subheadline)
+                            .foregroundColor(CleanerTheme.textSecondary)
+                    }
+
+                    Spacer()
+                }
+
+                // Recommendation
+                if let recommendation = healthRecommendation(health) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.caption)
+                            .foregroundColor(CleanerTheme.accent)
+                        Text(recommendation)
+                            .cleanerFont(.caption)
+                            .foregroundColor(CleanerTheme.textSecondary)
+                    }
+                    .padding(12)
+                    .background(CleanerTheme.accent.opacity(0.1))
+                    .cornerRadius(12)
+                }
+            }
+            .padding(20)
+            .background(CleanerTheme.cardBackground)
+            .cornerRadius(16)
+
+            // Battery & Storage Grid
+            HStack(spacing: 16) {
+                // Battery
+                VStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(colorForStatus(battery.statusColor).opacity(0.15))
+                            .frame(width: 48, height: 48)
+
+                        Image(systemName: battery.statusIcon)
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(CleanerTheme.iconGray)
+                    }
+
+                    VStack(spacing: 4) {
+                        Text("\(battery.percentage)%")
+                            .cleanerFont(.headline)
+                            .foregroundColor(CleanerTheme.textPrimary)
+                        Text("Battery")
+                            .cleanerFont(.caption)
+                            .foregroundColor(CleanerTheme.textSecondary)
+                    }
+
+                    if battery.isLowPowerModeEnabled {
+                        Text("Low Power")
+                            .cleanerFont(.caption2)
+                            .foregroundColor(CleanerTheme.accent)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(CleanerTheme.cardBackground)
+                .cornerRadius(16)
+
+                // Storage
+                if let storage = storage {
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(colorForStatus(storage.statusColor).opacity(0.15))
+                                .frame(width: 48, height: 48)
+
+                            Image(systemName: storage.statusIcon)
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(CleanerTheme.iconGray)
+                        }
+
+                        VStack(spacing: 4) {
+                            Text(storage.formatBytes(storage.freeSpace))
+                                .cleanerFont(.headline)
+                                .foregroundColor(CleanerTheme.textPrimary)
+                            Text("Available")
+                                .cleanerFont(.caption)
+                                .foregroundColor(CleanerTheme.textSecondary)
+                        }
+
+                        Text("\(Int(storage.usagePercentage))% Used")
+                            .cleanerFont(.caption2)
+                            .foregroundColor(CleanerTheme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(CleanerTheme.cardBackground)
+                    .cornerRadius(16)
+                }
+            }
+        }
+    }
+
+    // MARK: - Storage Recommendations Widget
+
+    private var storageRecommendationsWidget: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Storage Tips")
+                    .cleanerFont(.headline)
+                    .foregroundColor(CleanerTheme.textPrimary)
+
+                Spacer()
+
+                Button(action: {
+                    showingStorageRecommendations = true
+                }) {
+                    Text("See All")
+                        .cleanerFont(.callout)
+                        .foregroundColor(CleanerTheme.primary)
+                }
+            }
+            .padding(.horizontal, 4)
+
+            if let storage = SystemInsights.shared.getStorageInfo() {
+                let recommendations = StorageRecommendations.shared.generateRecommendations(for: storage)
+
+                VStack(spacing: 12) {
+                    ForEach(recommendations.prefix(3), id: \.title) { recommendation in
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(priorityColor(recommendation.priority).opacity(0.15))
+                                    .frame(width: 40, height: 40)
+
+                                Image(systemName: iconForCategory(recommendation.category))
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(CleanerTheme.iconGray)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(recommendation.title)
+                                    .cleanerFont(.subheadline)
+                                    .foregroundColor(CleanerTheme.textPrimary)
+                                Text(recommendation.description)
+                                    .cleanerFont(.caption)
+                                    .foregroundColor(CleanerTheme.textSecondary)
+                                    .lineLimit(2)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(CleanerTheme.cardBackground)
+                        .cornerRadius(12)
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Helpers
+
+    private func totalIssuesCount(_ results: ScanCoordinator.ScanResults) -> Int {
+        var count = results.statistics.totalDuplicates +
+                   results.blurryPhotos.count +
+                   results.darkPhotos.count +
+                   results.screenshots.count +
+                   results.largeVideos.count +
+                   results.similarVideoGroups.reduce(0) { $0 + $1.videos.count } +
+                   results.optimizablePhotos.count +
+                   results.documents.count
+
+        if let contactsResults = results.contactsResults {
+            count += contactsResults.totalDuplicates
+        }
+
+        if let calendarResults = results.calendarResults {
+            count += calendarResults.totalCleanableEvents
+        }
+
+        return count
+    }
 
     private func formatBytes(_ bytes: Int64) -> String {
         let gb = Double(bytes) / (1024 * 1024 * 1024)
@@ -455,212 +683,13 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - System Health
-
-    private var systemHealthView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("System Health")
-                .font(.headline)
-
-            let health = SystemInsights.shared.calculateSystemHealth()
-            let battery = SystemInsights.shared.getBatteryInfo()
-            let storage = SystemInsights.shared.getStorageInfo()
-
-            // Overall Health Score
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 16) {
-                    Image(systemName: health.statusIcon)
-                        .font(.largeTitle)
-                        .foregroundColor(colorForStatus(health.statusColor))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Text("Grade: \(health.grade)")
-                                .font(.title)
-                                .fontWeight(.bold)
-                            Text(gradeDescription(health.grade))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        Text("\(health.overallScore)% Overall Health")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-                }
-
-                // Breakdown
-                HStack(spacing: 16) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "battery.100")
-                            .font(.caption)
-                        Text("Battery: \(health.batteryHealth)%")
-                            .font(.caption2)
-                    }
-                    .foregroundColor(.secondary)
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "internaldrive")
-                            .font(.caption)
-                        Text("Storage: \(health.storageHealth)%")
-                            .font(.caption2)
-                    }
-                    .foregroundColor(.secondary)
-                }
-
-                // Recommendation
-                if let recommendation = healthRecommendation(health) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "lightbulb.fill")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                        Text(recommendation)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            .padding()
-            .background(colorForStatus(health.statusColor).opacity(0.1))
-            .cornerRadius(12)
-        }
-    }
-
-    // MARK: - System Health
-
-    private var systemHealthView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("System Health")
-                .font(.headline)
-
-            let health = SystemInsights.shared.calculateSystemHealth()
-            let battery = SystemInsights.shared.getBatteryInfo()
-            let storage = SystemInsights.shared.getStorageInfo()
-
-            // Overall Health Score
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 16) {
-                    Image(systemName: health.statusIcon)
-                        .font(.largeTitle)
-                        .foregroundColor(colorForStatus(health.statusColor))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Text("Grade: \(health.grade)")
-                                .font(.title)
-                                .fontWeight(.bold)
-                            Text(gradeDescription(health.grade))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        Text("\(health.overallScore)% Overall Health")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-                }
-
-                // Breakdown
-                HStack(spacing: 16) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "battery.100")
-                            .font(.caption)
-                        Text("Battery: \(health.batteryHealth)%")
-                            .font(.caption2)
-                    }
-                    .foregroundColor(.secondary)
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "internaldrive")
-                            .font(.caption)
-                        Text("Storage: \(health.storageHealth)%")
-                            .font(.caption2)
-                    }
-                    .foregroundColor(.secondary)
-                }
-
-                // Recommendation
-                if let recommendation = healthRecommendation(health) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "lightbulb.fill")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                        Text(recommendation)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            .padding()
-            .background(colorForStatus(health.statusColor).opacity(0.1))
-            .cornerRadius(12)
-
-            // Battery & Storage Grid
-            HStack(spacing: 16) {
-                // Battery
-                VStack(spacing: 12) {
-                    Image(systemName: battery.statusIcon)
-                        .font(.title)
-                        .foregroundColor(colorForStatus(battery.statusColor))
-
-                    VStack(spacing: 4) {
-                        Text("\(battery.percentage)%")
-                            .font(.title3)
-                            .fontWeight(.bold)
-                        Text("Battery")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    if battery.isLowPowerModeEnabled {
-                        Text("Low Power Mode")
-                            .font(.caption2)
-                            .foregroundColor(.orange)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(colorForStatus(battery.statusColor).opacity(0.1))
-                .cornerRadius(12)
-
-                // Storage
-                if let storage = storage {
-                    VStack(spacing: 12) {
-                        Image(systemName: storage.statusIcon)
-                            .font(.title)
-                            .foregroundColor(colorForStatus(storage.statusColor))
-
-                        VStack(spacing: 4) {
-                            Text(storage.formatBytes(storage.freeSpace))
-                                .font(.title3)
-                                .fontWeight(.bold)
-                            Text("Available")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
-                        Text("\(Int(storage.usagePercentage))% Used")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(colorForStatus(storage.statusColor).opacity(0.1))
-                    .cornerRadius(12)
-                }
-            }
-        }
-    }
-
     private func colorForStatus(_ status: String) -> Color {
         switch status {
-        case "green": return .green
-        case "orange": return .orange
-        case "red": return .red
-        case "blue": return .blue
-        default: return .gray
+        case "green": return CleanerTheme.accentGreen
+        case "orange": return CleanerTheme.accent
+        case "red": return CleanerTheme.accentRed
+        case "blue": return CleanerTheme.primary
+        default: return CleanerTheme.iconGray
         }
     }
 
@@ -681,7 +710,7 @@ struct DashboardView: View {
         } else if health.batteryHealth < 20 {
             return "Battery is low. Charge your device."
         } else if health.overallScore >= 80 {
-            return nil // No recommendation needed for good health
+            return nil
         } else if health.overallScore >= 60 {
             return "Consider freeing up some storage space."
         } else {
@@ -689,16 +718,12 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - Card Tap Handlers
-
     private func handleContactsCardTap(results: ScanCoordinator.ScanResults) {
         let contactsAuth = ContactsCleaner.shared.checkAuthorizationStatus()
 
         if contactsAuth != .authorized {
-            // Show permission alert
             showingContactsPermissionAlert = true
         } else if let contactsResults = results.contactsResults, contactsResults.totalDuplicates > 0 {
-            // Navigate to contacts view
             showingSmartAlbums = true
         }
     }
@@ -707,19 +732,38 @@ struct DashboardView: View {
         let calendarAuth = CalendarCleaner.shared.checkAuthorizationStatus(for: .event)
 
         if calendarAuth != .authorized {
-            // Show permission alert
             showingCalendarPermissionAlert = true
         } else if let calendarResults = results.calendarResults, calendarResults.totalCleanableEvents > 0 {
-            // Navigate to calendar view
             showingSmartAlbums = true
         }
     }
 
-    // MARK: - Storage Recommendations
+    private func priorityColor(_ priority: StorageRecommendations.RecommendationPriority) -> Color {
+        switch priority {
+        case .high:
+            return CleanerTheme.accentRed
+        case .medium:
+            return CleanerTheme.accent
+        case .low:
+            return CleanerTheme.primary
+        }
+    }
 
-    private var storageRecommendationsWidget: some View {
-        let storage = SystemInsights.shared.getStorageInfo()
-        return CompactRecommendationsWidget(storageInfo: storage)
+    private func iconForCategory(_ category: StorageRecommendations.RecommendationCategory) -> String {
+        switch category {
+        case .photos:
+            return "photo.stack"
+        case .videos:
+            return "video.fill"
+        case .cache:
+            return "trash"
+        case .apps:
+            return "square.stack.3d.up"
+        case .duplicates:
+            return "square.on.square"
+        case .system:
+            return "internaldrive"
+        }
     }
 }
 
