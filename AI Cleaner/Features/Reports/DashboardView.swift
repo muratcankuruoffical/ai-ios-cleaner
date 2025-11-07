@@ -321,7 +321,7 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Last Scan Results")
                         .cleanerFont(.subtitle)
-                    Text("Found \(results.statistics.totalDuplicates) items")
+                    Text(results.issuesDescription)
                         .cleanerFont(.caption)
                 }
 
@@ -357,10 +357,10 @@ struct DashboardView: View {
                     .background(CleanerTheme.cardBackground)
 
                 VStack(spacing: 8) {
-                    Text("\(results.totalPhotos)")
+                    Text("\(results.totalIssuesFound)")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(CleanerTheme.accentGreen)
-                    Text("Photos Scanned")
+                        .foregroundColor(CleanerTheme.accentRed)
+                    Text("Issues Found")
                         .cleanerFont(.caption)
                 }
                 .frame(maxWidth: .infinity)
@@ -555,8 +555,6 @@ struct DashboardView: View {
                 .tracking(1.2)
 
             let health = SystemInsights.shared.calculateSystemHealth()
-            let battery = SystemInsights.shared.getBatteryInfo()
-            let storage = SystemInsights.shared.getStorageInfo()
 
             // Overall Health Score
             VStack(alignment: .leading, spacing: 16) {
@@ -622,61 +620,6 @@ struct DashboardView: View {
             }
             .padding(20)
             .card(backgroundColor: CleanerTheme.surface)
-
-            // Battery & Storage Grid
-            HStack(spacing: 12) {
-                // Battery
-                VStack(spacing: 12) {
-                    Image(systemName: battery.statusIcon)
-                        .font(.title2)
-                        .foregroundColor(colorForStatus(battery.statusColor))
-
-                    VStack(spacing: 4) {
-                        Text("\(battery.percentage)%")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(CleanerTheme.textPrimary)
-                        Text("Battery")
-                            .cleanerFont(.caption)
-                    }
-
-                    if battery.isLowPowerModeEnabled {
-                        Text("Low Power")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(CleanerTheme.accent)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(CleanerTheme.accent.opacity(0.2))
-                            .cornerRadius(6)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(16)
-                .card(backgroundColor: CleanerTheme.surface)
-
-                // Storage
-                if let storage = storage {
-                    VStack(spacing: 12) {
-                        Image(systemName: storage.statusIcon)
-                            .font(.title2)
-                            .foregroundColor(colorForStatus(storage.statusColor))
-
-                        VStack(spacing: 4) {
-                            Text(storage.formatBytes(storage.freeSpace))
-                                .font(.system(size: 22, weight: .bold))
-                                .foregroundColor(CleanerTheme.textPrimary)
-                            Text("Available")
-                                .cleanerFont(.caption)
-                        }
-
-                        Text("\(Int(storage.usagePercentage))% Used")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(CleanerTheme.textSecondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(16)
-                    .card(backgroundColor: CleanerTheme.surface)
-                }
-            }
         }
     }
 

@@ -111,6 +111,54 @@ class ScanCoordinator: ObservableObject {
                 return String(format: "%.0f MB", potentialSavingsMB)
             }
         }
+
+        // Total issues found across all categories
+        var totalIssuesFound: Int {
+            var total = 0
+
+            // Photos issues
+            total += statistics.totalDuplicates // All photos in similarity groups
+            total += blurryPhotos.count
+            total += darkPhotos.count
+            total += screenshots.count
+            total += optimizablePhotos.count
+            total += documents.count
+
+            // Videos issues
+            total += largeVideos.count
+            total += similarVideoGroups.reduce(0) { $0 + $1.videos.count }
+
+            // Other issues
+            if let contactsResults = contactsResults {
+                total += contactsResults.totalDuplicates
+            }
+            if let calendarResults = calendarResults {
+                total += calendarResults.totalCleanableEvents
+            }
+
+            return total
+        }
+
+        // Total items with issues (photos + videos)
+        var totalItemsWithIssues: Int {
+            totalPhotos + totalVideos
+        }
+
+        // Formatted description for issues
+        var issuesDescription: String {
+            let photoCount = statistics.totalDuplicates + blurryPhotos.count + darkPhotos.count + screenshots.count + optimizablePhotos.count + documents.count
+            let videoCount = largeVideos.count + similarVideoGroups.reduce(0) { $0 + $1.videos.count }
+
+            if photoCount > 0 && videoCount > 0 {
+                return "\(photoCount) Photos • \(videoCount) Videos"
+            } else if photoCount > 0 {
+                return "\(photoCount) Photos"
+            } else if videoCount > 0 {
+                return "\(videoCount) Videos"
+            } else {
+                return "No issues found"
+            }
+        }
     }
 
     // MARK: - Start Scan
