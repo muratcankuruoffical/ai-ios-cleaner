@@ -10,6 +10,7 @@ import Photos
 import CoreData
 import UIKit
 internal import Combine
+internal import EventKit
 
 @MainActor
 class ScanCoordinator: ObservableObject {
@@ -28,6 +29,10 @@ class ScanCoordinator: ObservableObject {
     private let darknessDetector = DarknessDetector.shared
     private let screenshotDetector = ScreenshotDetector.shared
     private let videoAnalyzer = VideoAnalyzer.shared
+    private let photoOptimizer = PhotoOptimizer.shared
+    private let documentDetector = DocumentDetector.shared
+    private let contactsCleaner = ContactsCleaner.shared
+    private let calendarCleaner = CalendarCleaner.shared
 
     // MARK: - State
 
@@ -80,6 +85,11 @@ class ScanCoordinator: ObservableObject {
         let darkPhotos: [(asset: PHAsset, score: Float)]
         let screenshots: [PHAsset]
         let largeVideos: [VideoAnalyzer.VideoInfo]
+        let similarVideoGroups: [VideoAnalyzer.SimilarVideoGroup]
+        let optimizablePhotos: [PhotoOptimizer.OptimizablePhoto]
+        let documents: [DocumentDetector.DocumentDetectionResult]
+        let contactsResults: ContactsCleaner.ContactsScanResults?
+        let calendarResults: CalendarCleaner.CalendarScanResults?
 
         // Statistics
         let potentialSavingsBytes: Int64
@@ -310,8 +320,103 @@ class ScanCoordinator: ObservableObject {
 
         let largeVideos = await videoAnalyzer.findLargeVideos(
             assets: videoAssetArray,
-            thresholdMB: 200
+            thresholdMB: 200,
+            progressHandler: { [self] current, total in
+                self.updateProgress(step: "Finding large videos...", current: current, total: total)
+            }
         )
+
+        try Task.checkCancellation()
+
+        // Step 5b: Find similar videos
+        updateProgress(step: "Finding similar videos...", current: 0, total: totalVideos)
+
+        let similarVideoGroups = await videoAnalyzer.findSimilarVideos(
+            assets: videoAssetArray,
+            durationThreshold: 2.0,
+            progressHandler: { [self] current, total in
+                self.updateProgress(step: "Finding similar videos...", current: current, total: total)
+            }
+        )
+
+        try Task.checkCancellation()
+
+        // Step 5c: Find optimizable photos (4K → 1080p)
+        updateProgress(step: "Finding optimizable photos...", current: 0, total: totalPhotos)
+
+        let imageAssetArray = assetsWithVectors.map { $0.asset }
+        let optimizablePhotos = await photoOptimizer.findOptimizablePhotos(
+            assets: imageAssetArray,
+            configuration: .preset1080p,
+            progressHandler: { [self] current, total in
+                self.updateProgress(step: "Finding optimizable photos...", current: current, total: total)
+            }
+        )
+
+        // DEBUG: Log optimization opportunities
+        print("\n💾 OPTIMIZATION OPPORTUNITIES:")
+        print("   Found \(optimizablePhotos.count) photos that can be optimized")
+        if let firstPhoto = optimizablePhotos.first {
+            print("   Best saving: \(photoOptimizer.formatFileSize(firstPhoto.potentialSavings))")
+        }
+
+        try Task.checkCancellation()
+
+        // Step 5d: Detect documents (ID cards, invoices, etc.)
+        updateProgress(step: "Detecting documents...", current: 0, total: totalPhotos)
+
+        let documents = await documentDetector.detectDocuments(
+            in: imageAssetArray,
+            progressHandler: { [self] current, total in
+                self.updateProgress(step: "Detecting documents...", current: current, total: total)
+            }
+        )
+
+        // DEBUG: Log document detection results
+        print("\n📄 DOCUMENT DETECTION:")
+        print("   Found \(documents.count) documents")
+        let sensitiveCount = documentDetector.countSensitiveDocuments(documents)
+        print("   Sensitive documents: \(sensitiveCount)")
+        if let firstDoc = documents.first {
+            print("   Top match: \(firstDoc.documentType.rawValue) (confidence: \(String(format: "%.2f", firstDoc.confidence)))")
+        }
+
+        try Task.checkCancellation()
+
+        // Step 5e: Scan contacts (optional - only if authorized)
+        var contactsResults: ContactsCleaner.ContactsScanResults? = nil
+        if contactsCleaner.checkAuthorizationStatus() == .authorized {
+            updateProgress(step: "Scanning contacts...", current: 0, total: 100)
+
+            contactsResults = await contactsCleaner.scanContacts { [self] current, total in
+                self.updateProgress(step: "Scanning contacts...", current: current, total: total)
+            }
+
+            print("\n📇 CONTACTS SCAN:")
+            print("   Duplicate groups: \(contactsResults?.duplicateGroups.count ?? 0)")
+            print("   Total duplicates: \(contactsResults?.totalDuplicates ?? 0)")
+        } else {
+            print("\n📇 CONTACTS: Skipped (not authorized)")
+        }
+
+        try Task.checkCancellation()
+
+        // Step 5f: Scan calendar (optional - only if authorized)
+        var calendarResults: CalendarCleaner.CalendarScanResults? = nil
+        if calendarCleaner.checkAuthorizationStatus(for: .event) == .authorized {
+            updateProgress(step: "Scanning calendar...", current: 0, total: 100)
+
+            calendarResults = await calendarCleaner.scanCalendar { [self] current, total in
+                self.updateProgress(step: "Scanning calendar...", current: current, total: total)
+            }
+
+            print("\n📅 CALENDAR SCAN:")
+            print("   Past events: \(calendarResults?.pastEvents.count ?? 0)")
+            print("   Duplicate groups: \(calendarResults?.duplicateGroups.count ?? 0)")
+            print("   Completed reminders: \(calendarResults?.completedReminders.count ?? 0)")
+        } else {
+            print("\n📅 CALENDAR: Skipped (not authorized)")
+        }
 
         try Task.checkCancellation()
 
@@ -322,11 +427,34 @@ class ScanCoordinator: ObservableObject {
 
         // Calculate total potential savings
         var totalSavings = statistics.potentialSavingsBytes
+        print("\n💾 POTENTIAL SAVINGS CALCULATION:")
+        print("   📸 Duplicate Photos: \(formatBytes(statistics.potentialSavingsBytes))")
 
-        // Add video savings
+        // Add large video savings
+        var largeVideoSavings: Int64 = 0
         for video in largeVideos {
-            totalSavings += video.fileSize
+            largeVideoSavings += video.fileSize
         }
+        totalSavings += largeVideoSavings
+        print("   🎬 Large Videos: \(formatBytes(largeVideoSavings)) (\(largeVideos.count) videos)")
+
+        // Add similar video savings (keep smallest, delete duplicates)
+        var similarVideoSavings: Int64 = 0
+        for group in similarVideoGroups {
+            // Sort by size and calculate savings (all except the smallest)
+            let sortedVideos = group.videos.sorted { $0.fileSize < $1.fileSize }
+            let savingsFromGroup = sortedVideos.dropFirst().reduce(Int64(0)) { $0 + $1.fileSize }
+            similarVideoSavings += savingsFromGroup
+        }
+        totalSavings += similarVideoSavings
+        print("   🎥 Similar Videos: \(formatBytes(similarVideoSavings)) (\(similarVideoGroups.count) groups)")
+
+        // Add optimization savings
+        let optimizationSavings = photoOptimizer.calculateTotalSavings(photos: optimizablePhotos)
+        totalSavings += optimizationSavings
+        print("   📉 Optimizable Photos: \(formatBytes(optimizationSavings)) (\(optimizablePhotos.count) photos)")
+
+        print("   ✨ TOTAL POTENTIAL SAVINGS: \(formatBytes(totalSavings))")
 
         let duration = Date().timeIntervalSince(startTime)
 
@@ -340,6 +468,11 @@ class ScanCoordinator: ObservableObject {
             darkPhotos: darkPhotos,
             screenshots: screenshots,
             largeVideos: largeVideos,
+            similarVideoGroups: similarVideoGroups,
+            optimizablePhotos: optimizablePhotos,
+            documents: documents,
+            contactsResults: contactsResults,
+            calendarResults: calendarResults,
             potentialSavingsBytes: totalSavings,
             statistics: statistics
         )
@@ -518,6 +651,15 @@ class ScanCoordinator: ObservableObject {
         progress.currentItemIndex = current
         progress.totalItems = total
         progress.percentage = total > 0 ? Double(current) / Double(total) : 0
+    }
+
+    // MARK: - Helper Methods
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        formatter.allowedUnits = [.useKB, .useMB, .useGB]
+        return formatter.string(fromByteCount: bytes)
     }
 
     // MARK: - Session Management

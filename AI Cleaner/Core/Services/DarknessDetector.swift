@@ -23,7 +23,7 @@ final class DarknessDetector {
         var dark: Float = 0.30
         var normal: Float = 0.70
 
-        static let `default` = BrightnessThresholds()
+        nonisolated(unsafe) static let `default` = BrightnessThresholds()
     }
 
     enum BrightnessLevel {

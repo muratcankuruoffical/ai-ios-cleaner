@@ -304,6 +304,11 @@ struct ResultCategoryCard: View {
             darkPhotos: [],
             screenshots: [],
             largeVideos: [],
+            similarVideoGroups: [],
+            optimizablePhotos: [],
+            documents: [],
+            contactsResults: nil,
+            calendarResults: nil,
             potentialSavingsBytes: 2_500_000_000,
             statistics: CleanupStatistics(
                 totalGroups: 25,

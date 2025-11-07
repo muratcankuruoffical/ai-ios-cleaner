@@ -15,7 +15,8 @@ final class PhotoLibraryService {
     private let imageManager = PHCachingImageManager()
 
     private init() {
-        imageManager.allowsCachingHighQualityImages = false
+        // Note: allowsCachingHighQualityImages is deprecated in iOS 26.0
+        // Removed as it's no longer needed
     }
 
     // MARK: - Authorization

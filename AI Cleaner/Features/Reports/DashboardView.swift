@@ -14,6 +14,8 @@ struct DashboardView: View {
     @State private var showingScanProgress = false
     @State private var showingResults = false
     @State private var showingSmartAlbums = false
+    @State private var showingContactsPermissionAlert = false
+    @State private var showingCalendarPermissionAlert = false
 
     var body: some View {
         NavigationView {
@@ -54,6 +56,21 @@ struct DashboardView: View {
                     }
                     .padding()
                 }
+                    // Quick Stats
+                    if let results = scanCoordinator.scanResults {
+                        quickStatsView(results)
+                    }
+
+                    // Recent Activity
+                    recentActivityView
+
+                    // System Health (Battery + Storage)
+                    systemHealthView
+
+                    // Storage Recommendations
+                    storageRecommendationsWidget
+                }
+                .padding()
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
@@ -84,6 +101,26 @@ struct DashboardView: View {
                 default:
                     break
                 }
+            }
+            .alert("Contacts Permission Required", isPresented: $showingContactsPermissionAlert) {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Please grant Contacts permission in Settings to scan for duplicate contacts.")
+            }
+            .alert("Calendar Permission Required", isPresented: $showingCalendarPermissionAlert) {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Please grant Calendar permission in Settings to scan for old events.")
             }
         }
     }
@@ -311,6 +348,62 @@ struct DashboardView: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 16, weight: .semibold))
+                    color: .green
+                )
+
+                StatCard(
+                    icon: "video.fill",
+                    title: "Large Videos",
+                    value: "\(results.largeVideos.count)",
+                    color: .red
+                )
+
+                StatCard(
+                    icon: "video.badge.plus",
+                    title: "Similar Videos",
+                    value: "\(results.similarVideoGroups.reduce(0) { $0 + $1.videos.count })",
+                    color: .pink
+                )
+
+                StatCard(
+                    icon: "arrow.down.circle",
+                    title: "Optimizable",
+                    value: "\(results.optimizablePhotos.count)",
+                    color: .cyan
+                )
+
+                StatCard(
+                    icon: "doc.text",
+                    title: "Documents",
+                    value: "\(results.documents.count)",
+                    color: .indigo
+                )
+
+                // Contacts Card
+                Button(action: {
+                    handleContactsCardTap(results: results)
+                }) {
+                    StatCard(
+                        icon: "person.2.fill",
+                        title: "Duplicate Contacts",
+                        value: "\(results.contactsResults?.totalDuplicates ?? 0)",
+                        color: .brown
+                    )
+                }
+                .buttonStyle(.plain)
+
+                // Calendar Card
+                Button(action: {
+                    handleCalendarCardTap(results: results)
+                }) {
+                    StatCard(
+                        icon: "calendar.badge.clock",
+                        title: "Old Events",
+                        value: "\(results.calendarResults?.totalCleanableEvents ?? 0)",
+                        color: .teal
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .foregroundColor(.white)
             .padding(.vertical, 18)
@@ -360,6 +453,273 @@ struct DashboardView: View {
             let mb = Double(bytes) / (1024 * 1024)
             return String(format: "%.0f MB", mb)
         }
+    }
+
+    // MARK: - System Health
+
+    private var systemHealthView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("System Health")
+                .font(.headline)
+
+            let health = SystemInsights.shared.calculateSystemHealth()
+            let battery = SystemInsights.shared.getBatteryInfo()
+            let storage = SystemInsights.shared.getStorageInfo()
+
+            // Overall Health Score
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 16) {
+                    Image(systemName: health.statusIcon)
+                        .font(.largeTitle)
+                        .foregroundColor(colorForStatus(health.statusColor))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text("Grade: \(health.grade)")
+                                .font(.title)
+                                .fontWeight(.bold)
+                            Text(gradeDescription(health.grade))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Text("\(health.overallScore)% Overall Health")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                // Breakdown
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "battery.100")
+                            .font(.caption)
+                        Text("Battery: \(health.batteryHealth)%")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.secondary)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "internaldrive")
+                            .font(.caption)
+                        Text("Storage: \(health.storageHealth)%")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.secondary)
+                }
+
+                // Recommendation
+                if let recommendation = healthRecommendation(health) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        Text(recommendation)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding()
+            .background(colorForStatus(health.statusColor).opacity(0.1))
+            .cornerRadius(12)
+        }
+    }
+
+    // MARK: - System Health
+
+    private var systemHealthView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("System Health")
+                .font(.headline)
+
+            let health = SystemInsights.shared.calculateSystemHealth()
+            let battery = SystemInsights.shared.getBatteryInfo()
+            let storage = SystemInsights.shared.getStorageInfo()
+
+            // Overall Health Score
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 16) {
+                    Image(systemName: health.statusIcon)
+                        .font(.largeTitle)
+                        .foregroundColor(colorForStatus(health.statusColor))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text("Grade: \(health.grade)")
+                                .font(.title)
+                                .fontWeight(.bold)
+                            Text(gradeDescription(health.grade))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Text("\(health.overallScore)% Overall Health")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                // Breakdown
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "battery.100")
+                            .font(.caption)
+                        Text("Battery: \(health.batteryHealth)%")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.secondary)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "internaldrive")
+                            .font(.caption)
+                        Text("Storage: \(health.storageHealth)%")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.secondary)
+                }
+
+                // Recommendation
+                if let recommendation = healthRecommendation(health) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        Text(recommendation)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding()
+            .background(colorForStatus(health.statusColor).opacity(0.1))
+            .cornerRadius(12)
+
+            // Battery & Storage Grid
+            HStack(spacing: 16) {
+                // Battery
+                VStack(spacing: 12) {
+                    Image(systemName: battery.statusIcon)
+                        .font(.title)
+                        .foregroundColor(colorForStatus(battery.statusColor))
+
+                    VStack(spacing: 4) {
+                        Text("\(battery.percentage)%")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                        Text("Battery")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if battery.isLowPowerModeEnabled {
+                        Text("Low Power Mode")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(colorForStatus(battery.statusColor).opacity(0.1))
+                .cornerRadius(12)
+
+                // Storage
+                if let storage = storage {
+                    VStack(spacing: 12) {
+                        Image(systemName: storage.statusIcon)
+                            .font(.title)
+                            .foregroundColor(colorForStatus(storage.statusColor))
+
+                        VStack(spacing: 4) {
+                            Text(storage.formatBytes(storage.freeSpace))
+                                .font(.title3)
+                                .fontWeight(.bold)
+                            Text("Available")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text("\(Int(storage.usagePercentage))% Used")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(colorForStatus(storage.statusColor).opacity(0.1))
+                    .cornerRadius(12)
+                }
+            }
+        }
+    }
+
+    private func colorForStatus(_ status: String) -> Color {
+        switch status {
+        case "green": return .green
+        case "orange": return .orange
+        case "red": return .red
+        case "blue": return .blue
+        default: return .gray
+        }
+    }
+
+    private func gradeDescription(_ grade: String) -> String {
+        switch grade {
+        case "A": return "Excellent"
+        case "B": return "Good"
+        case "C": return "Fair"
+        case "D": return "Poor"
+        case "F": return "Needs Attention"
+        default: return ""
+        }
+    }
+
+    private func healthRecommendation(_ health: SystemInsights.SystemHealthScore) -> String? {
+        if health.storageHealth < 30 {
+            return "Storage is almost full. Delete unnecessary files to improve performance."
+        } else if health.batteryHealth < 20 {
+            return "Battery is low. Charge your device."
+        } else if health.overallScore >= 80 {
+            return nil // No recommendation needed for good health
+        } else if health.overallScore >= 60 {
+            return "Consider freeing up some storage space."
+        } else {
+            return "Your device needs attention. Use AI Cleaner to free up space!"
+        }
+    }
+
+    // MARK: - Card Tap Handlers
+
+    private func handleContactsCardTap(results: ScanCoordinator.ScanResults) {
+        let contactsAuth = ContactsCleaner.shared.checkAuthorizationStatus()
+
+        if contactsAuth != .authorized {
+            // Show permission alert
+            showingContactsPermissionAlert = true
+        } else if let contactsResults = results.contactsResults, contactsResults.totalDuplicates > 0 {
+            // Navigate to contacts view
+            showingSmartAlbums = true
+        }
+    }
+
+    private func handleCalendarCardTap(results: ScanCoordinator.ScanResults) {
+        let calendarAuth = CalendarCleaner.shared.checkAuthorizationStatus(for: .event)
+
+        if calendarAuth != .authorized {
+            // Show permission alert
+            showingCalendarPermissionAlert = true
+        } else if let calendarResults = results.calendarResults, calendarResults.totalCleanableEvents > 0 {
+            // Navigate to calendar view
+            showingSmartAlbums = true
+        }
+    }
+
+    // MARK: - Storage Recommendations
+
+    private var storageRecommendationsWidget: some View {
+        let storage = SystemInsights.shared.getStorageInfo()
+        return CompactRecommendationsWidget(storageInfo: storage)
     }
 }
 
