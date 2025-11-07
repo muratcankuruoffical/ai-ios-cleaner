@@ -36,7 +36,7 @@ final class PhotoOptimizer {
         /// 1080p preset - Aggressive compression for real space savings
         nonisolated(unsafe) static let preset1080p = Configuration(
             targetResolution: 1920,
-            minResolutationForOptimization: 2560,
+            minResolutionForOptimization: 2560,
             compressionQuality: 0.70  // Lower quality = smaller file
         )
 
