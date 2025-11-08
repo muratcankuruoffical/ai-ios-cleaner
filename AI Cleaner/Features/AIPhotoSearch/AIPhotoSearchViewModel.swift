@@ -26,6 +26,11 @@ class AIPhotoSearchViewModel: ObservableObject {
     // MARK: - Initialization
 
     func initializeIfNeeded() {
+        #if targetEnvironment(simulator)
+        print("📱 [AIPhotoSearch] Running on simulator - Vision indexing disabled")
+        totalPhotos = getTotalPhotoCount()
+        hasIndexed = false
+        #else
         Task {
             // Check if we need to index photos
             let indexedCount = getIndexedPhotoCount()
@@ -45,6 +50,7 @@ class AIPhotoSearchViewModel: ObservableObject {
                 indexingProgress = totalCount
             }
         }
+        #endif
     }
 
     // MARK: - Search
@@ -59,7 +65,15 @@ class AIPhotoSearchViewModel: ObservableObject {
         hasSearched = true
 
         Task {
-            // Perform search
+            var assets: [PHAsset] = []
+
+            #if targetEnvironment(simulator)
+            // Use simple search on simulator (Vision Framework doesn't work)
+            print("📱 [AIPhotoSearch] Using simple search (simulator)")
+            assets = await SimplePhotoSearchService.shared.searchPhotos(query: query)
+            #else
+            // Use Vision Framework on real device
+            print("🔍 [AIPhotoSearch] Using Vision Framework (device)")
             let assetIds = analyzer.searchAssets(
                 query: query,
                 minConfidence: 0.4,
@@ -69,7 +83,8 @@ class AIPhotoSearchViewModel: ObservableObject {
             print("🔍 [AIPhotoSearch] Query: '\(query)' -> Found \(assetIds.count) matches")
 
             // Fetch PHAssets
-            let assets = await fetchAssets(withLocalIdentifiers: assetIds)
+            assets = await fetchAssets(withLocalIdentifiers: assetIds)
+            #endif
 
             searchResults = assets
             isSearching = false

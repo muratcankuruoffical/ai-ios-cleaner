@@ -15,6 +15,22 @@ struct AIPhotoSearchView: View {
     @State private var animateSearchBar = false
 
     // Popular search suggestions
+    #if targetEnvironment(simulator)
+    // Simplified suggestions for simulator (metadata-based)
+    private let suggestions = [
+        ("camera.viewfinder", "Screenshots", "screenshot"),
+        ("star.fill", "Favorites", "favorite"),
+        ("clock.arrow.circlepath", "Recent", "recent"),
+        ("calendar", "Old Photos", "old"),
+        ("photo.stack", "Panoramas", "panorama"),
+        ("sparkles", "HDR Photos", "hdr"),
+        ("livephoto", "Live Photos", "live"),
+        ("person.crop.circle", "Selfies", "selfie"),
+        ("photo", "All Photos", "photo"),
+        ("rectangle.portrait.and.arrow.right", "Portrait", "portrait")
+    ]
+    #else
+    // Full AI-powered suggestions for real device
     private let suggestions = [
         ("magnifyingglass", "Screenshots", "screenshots"),
         ("fork.knife", "Food & Drinks", "food"),
@@ -27,6 +43,7 @@ struct AIPhotoSearchView: View {
         ("building.2", "Buildings", "building architecture"),
         ("leaf", "Nature", "nature tree plant")
     ]
+    #endif
 
     var body: some View {
         NavigationView {
@@ -126,6 +143,17 @@ struct AIPhotoSearchView: View {
             Text("Search your photos using natural language")
                 .font(.system(size: 15))
                 .foregroundColor(CleanerTheme.textSecondary)
+
+            #if targetEnvironment(simulator)
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(CleanerTheme.warning)
+                Text("Vision Framework requires a real device")
+                    .font(.system(size: 13))
+                    .foregroundColor(CleanerTheme.warning)
+            }
+            .padding(.top, 4)
+            #endif
         }
     }
 
