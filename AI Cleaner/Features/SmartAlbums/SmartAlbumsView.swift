@@ -231,8 +231,10 @@ struct SmartAlbumsView: View {
             .environmentObject(scanCoordinator)
         case .largeVideos:
             LargeVideosListView(videos: filteredLargeVideos)
+                .environmentObject(scanCoordinator)
         case .similarVideos:
             SimilarVideosListView(groups: filteredSimilarVideoGroups)
+                .environmentObject(scanCoordinator)
         case .optimizable:
             PhotoOptimizationView(photos: filteredOptimizablePhotos)
         case .documents:
@@ -491,6 +493,7 @@ struct PhotoThumbnailView: View {
 
 struct LargeVideosListView: View {
     let videos: [VideoAnalyzer.VideoInfo]
+    @EnvironmentObject var scanCoordinator: ScanCoordinator
     @State private var deletedVideoIds: Set<String> = []
     @State private var showingDeleteAlert = false
     @State private var videoToDelete: VideoAnalyzer.VideoInfo?
@@ -563,9 +566,27 @@ struct LargeVideosListView: View {
     private func deleteVideo(_ video: VideoAnalyzer.VideoInfo) {
         Task {
             do {
+                print("🗑️ [LargeVideos] Starting video deletion - size: \(video.fileSize)")
                 try await PhotoLibraryService.shared.delete(assets: [video.asset])
-                _ = await MainActor.run {
+
+                await MainActor.run {
+                    print("🗑️ [LargeVideos] Video deleted successfully")
                     deletedVideoIds.insert(video.asset.localIdentifier)
+
+                    // Update scan coordinator to track deleted video
+                    scanCoordinator.markAssetsAsDeleted([video.asset])
+
+                    // Log activity to CoreData
+                    let context = CoreDataStack.shared.viewContext
+                    ActivityLog.createDeleteActivity(
+                        context: context,
+                        count: 1,
+                        freedBytes: video.fileSize,
+                        category: "Large Videos",
+                        timestamp: Date()
+                    )
+                    CoreDataStack.shared.save(context: context)
+                    print("🗑️ [LargeVideos] ActivityLog created and saved")
                 }
             } catch {
                 print("❌ Failed to delete video: \(error)")
@@ -578,6 +599,7 @@ struct LargeVideosListView: View {
 
 struct SimilarVideosListView: View {
     let groups: [VideoAnalyzer.SimilarVideoGroup]
+    @EnvironmentObject var scanCoordinator: ScanCoordinator
     @State private var selectedGroup: VideoAnalyzer.SimilarVideoGroup?
 
     var body: some View {
@@ -593,6 +615,7 @@ struct SimilarVideosListView: View {
         .sheet(item: $selectedGroup) { group in
             NavigationView {
                 VideoGroupDetailView(group: group)
+                    .environmentObject(scanCoordinator)
             }
         }
     }
@@ -633,6 +656,7 @@ struct SimilarVideoGroupRow: View {
 struct VideoGroupDetailView: View {
     let group: VideoAnalyzer.SimilarVideoGroup
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var scanCoordinator: ScanCoordinator
     @State private var deletedVideoIds: Set<String> = []
     @State private var showingDeleteAlert = false
     @State private var videoToDelete: VideoAnalyzer.VideoInfo?
@@ -721,9 +745,27 @@ struct VideoGroupDetailView: View {
     private func deleteVideo(_ video: VideoAnalyzer.VideoInfo) {
         Task {
             do {
+                print("🗑️ [VideoGroupDetail] Starting video deletion - size: \(video.fileSize)")
                 try await PhotoLibraryService.shared.delete(assets: [video.asset])
+
                 await MainActor.run {
+                    print("🗑️ [VideoGroupDetail] Video deleted successfully")
                     deletedVideoIds.insert(video.asset.localIdentifier)
+
+                    // Update scan coordinator to track deleted video
+                    scanCoordinator.markAssetsAsDeleted([video.asset])
+
+                    // Log activity to CoreData
+                    let context = CoreDataStack.shared.viewContext
+                    ActivityLog.createDeleteActivity(
+                        context: context,
+                        count: 1,
+                        freedBytes: video.fileSize,
+                        category: "Similar Videos",
+                        timestamp: Date()
+                    )
+                    CoreDataStack.shared.save(context: context)
+                    print("🗑️ [VideoGroupDetail] ActivityLog created and saved")
 
                     // Auto dismiss if all videos are deleted
                     if availableVideos.isEmpty {
