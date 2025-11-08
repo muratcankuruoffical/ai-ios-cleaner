@@ -315,4 +315,68 @@ final class CalendarCleaner {
             return "\(estimatedKB) KB"
         }
     }
+
+    /// Estimate storage size of an event in bytes
+    func estimateEventSize(_ event: EKEvent) -> Int64 {
+        var size: Int64 = 1024 // Base size: ~1KB for basic event info
+
+        // Title: estimate based on length
+        if let title = event.title {
+            size += Int64(title.count * 2) // UTF-16 encoding
+        }
+
+        // Notes: can be longer
+        if let notes = event.notes {
+            size += Int64(notes.count * 2)
+        }
+
+        // Location
+        if let location = event.location {
+            size += Int64(location.count * 2)
+        }
+
+        // Attendees: ~200 bytes per attendee
+        if let attendees = event.attendees {
+            size += Int64(attendees.count * 200)
+        }
+
+        // Alarms: ~100 bytes per alarm
+        if let alarms = event.alarms {
+            size += Int64(alarms.count * 100)
+        }
+
+        return size
+    }
+
+    /// Estimate storage size of a reminder in bytes
+    func estimateReminderSize(_ reminder: EKReminder) -> Int64 {
+        var size: Int64 = 512 // Base size: ~512 bytes for basic reminder info
+
+        // Title
+        if let title = reminder.title {
+            size += Int64(title.count * 2)
+        }
+
+        // Notes
+        if let notes = reminder.notes {
+            size += Int64(notes.count * 2)
+        }
+
+        // Alarms
+        if let alarms = reminder.alarms {
+            size += Int64(alarms.count * 100)
+        }
+
+        return size
+    }
+
+    /// Estimate total size of events
+    func estimateTotalEventSize(_ events: [EKEvent]) -> Int64 {
+        events.reduce(0) { $0 + estimateEventSize($1) }
+    }
+
+    /// Estimate total size of reminders
+    func estimateTotalReminderSize(_ reminders: [EKReminder]) -> Int64 {
+        reminders.reduce(0) { $0 + estimateReminderSize($1) }
+    }
 }

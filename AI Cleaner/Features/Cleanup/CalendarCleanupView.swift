@@ -297,6 +297,10 @@ struct CalendarCleanupView: View {
         Task {
             do {
                 print("📅 [CalendarCleanup] Deleting event: \(event.title ?? "Untitled")")
+
+                // Calculate event size before deletion
+                let freedBytes = CalendarCleaner.shared.estimateEventSize(event)
+
                 try CalendarCleaner.shared.deleteEvents([event])
                 await MainActor.run {
                     deletedEventIds.insert(event.eventIdentifier)
@@ -309,11 +313,15 @@ struct CalendarCleanupView: View {
                     ActivityLog.createCalendarActivity(
                         context: context,
                         count: 1,
+                        freedBytes: freedBytes,
                         category: category,
                         timestamp: Date()
                     )
                     CoreDataStack.shared.save(context: context)
                     print("📅 [CalendarCleanup] ActivityLog created and saved")
+
+                    // Track total savings
+                    SavingsTracker.shared.addSavedBytes(freedBytes)
                 }
             } catch {
                 print("❌ Delete event error: \(error)")
@@ -327,6 +335,10 @@ struct CalendarCleanupView: View {
         Task {
             do {
                 print("📅 [CalendarCleanup] Deleting reminder: \(reminder.title ?? "Untitled")")
+
+                // Calculate reminder size before deletion
+                let freedBytes = CalendarCleaner.shared.estimateReminderSize(reminder)
+
                 try CalendarCleaner.shared.deleteReminders([reminder])
                 await MainActor.run {
                     deletedReminderIds.insert(reminder.calendarItemIdentifier)
@@ -338,11 +350,15 @@ struct CalendarCleanupView: View {
                     ActivityLog.createCalendarActivity(
                         context: context,
                         count: 1,
+                        freedBytes: freedBytes,
                         category: "reminder",
                         timestamp: Date()
                     )
                     CoreDataStack.shared.save(context: context)
                     print("📅 [CalendarCleanup] ActivityLog created and saved")
+
+                    // Track total savings
+                    SavingsTracker.shared.addSavedBytes(freedBytes)
                 }
             } catch {
                 print("❌ Delete reminder error: \(error)")

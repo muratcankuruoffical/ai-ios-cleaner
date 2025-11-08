@@ -414,4 +414,35 @@ final class ContactsCleaner {
             return "Unknown Contact"
         }
     }
+
+    /// Estimate storage size of a contact in bytes
+    func estimateContactSize(_ contact: CNContact) -> Int64 {
+        var size: Int64 = 2048 // Base size: ~2KB for basic contact info (name, dates, etc.)
+
+        // Phone numbers: ~100 bytes each
+        size += Int64(contact.phoneNumbers.count * 100)
+
+        // Email addresses: ~50 bytes each
+        size += Int64(contact.emailAddresses.count * 50)
+
+        // Postal addresses: ~200 bytes each
+        size += Int64(contact.postalAddresses.count * 200)
+
+        // Organization name: ~100 bytes
+        if !contact.organizationName.isEmpty {
+            size += 100
+        }
+
+        // Contact photo: ~50KB if available
+        if contact.imageDataAvailable {
+            size += 51200 // 50KB
+        }
+
+        return size
+    }
+
+    /// Estimate total size of multiple contacts
+    func estimateTotalSize(_ contacts: [CNContact]) -> Int64 {
+        contacts.reduce(0) { $0 + estimateContactSize($1) }
+    }
 }

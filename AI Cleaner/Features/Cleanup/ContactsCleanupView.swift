@@ -197,16 +197,23 @@ struct ContactsCleanupView: View {
                     isProcessing = false
                     selectedGroup = nil
 
+                    // Calculate freed bytes (estimate)
+                    let freedBytes = ContactsCleaner.shared.estimateTotalSize(group.duplicates)
+
                     // Log activity to CoreData
                     let context = CoreDataStack.shared.viewContext
                     ActivityLog.createContactsActivity(
                         context: context,
                         count: group.duplicates.count,
+                        freedBytes: freedBytes,
                         category: "Merged \(group.duplicates.count) duplicate\(group.duplicates.count == 1 ? "" : "s")",
                         timestamp: Date()
                     )
                     CoreDataStack.shared.save(context: context)
                     print("📇 [ContactsCleanup] ActivityLog created and saved")
+
+                    // Track total savings
+                    SavingsTracker.shared.addSavedBytes(freedBytes)
                 }
             } catch {
                 print("❌ Merge error: \(error)")
@@ -229,16 +236,23 @@ struct ContactsCleanupView: View {
                     isProcessing = false
                     selectedGroup = nil
 
+                    // Calculate freed bytes (estimate)
+                    let freedBytes = ContactsCleaner.shared.estimateTotalSize(group.duplicates)
+
                     // Log activity to CoreData
                     let context = CoreDataStack.shared.viewContext
                     ActivityLog.createContactsActivity(
                         context: context,
                         count: group.duplicates.count,
+                        freedBytes: freedBytes,
                         category: "Deleted \(group.duplicates.count) duplicate\(group.duplicates.count == 1 ? "" : "s")",
                         timestamp: Date()
                     )
                     CoreDataStack.shared.save(context: context)
                     print("📇 [ContactsCleanup] ActivityLog created and saved")
+
+                    // Track total savings
+                    SavingsTracker.shared.addSavedBytes(freedBytes)
                 }
             } catch {
                 print("❌ Delete error: \(error)")

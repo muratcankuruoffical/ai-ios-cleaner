@@ -186,15 +186,16 @@ public class ActivityLog: NSManagedObject {
     static func createCalendarActivity(
         context: NSManagedObjectContext,
         count: Int,
+        freedBytes: Int64 = 0,
         category: String, // e.g., "past events", "reminders", "declined events"
         timestamp: Date = Date()
     ) -> ActivityLog {
-        print("📊 [ActivityLog] Creating calendar activity - count: \(count), category: \(category)")
+        print("📊 [ActivityLog] Creating calendar activity - count: \(count), freed: \(freedBytes) bytes, category: \(category)")
         let activity = ActivityLog(context: context)
         activity.id = UUID()
         activity.type = ActivityType.calendarCleaned.rawValue
         activity.itemCount = Int32(count)
-        activity.freedBytes = 0
+        activity.freedBytes = freedBytes
         activity.category = category
         activity.timestamp = timestamp
         print("📊 [ActivityLog] Calendar activity created - ID: \(activity.id?.uuidString ?? "nil")")
@@ -205,15 +206,16 @@ public class ActivityLog: NSManagedObject {
     static func createContactsActivity(
         context: NSManagedObjectContext,
         count: Int,
+        freedBytes: Int64 = 0,
         category: String, // e.g., "Merged 3 contacts", "Deleted 2 duplicates"
         timestamp: Date = Date()
     ) -> ActivityLog {
-        print("📊 [ActivityLog] Creating contacts activity - count: \(count), category: \(category)")
+        print("📊 [ActivityLog] Creating contacts activity - count: \(count), freed: \(freedBytes) bytes, category: \(category)")
         let activity = ActivityLog(context: context)
         activity.id = UUID()
         activity.type = ActivityType.contactsCleaned.rawValue
         activity.itemCount = Int32(count)
-        activity.freedBytes = 0
+        activity.freedBytes = freedBytes
         activity.category = category
         activity.timestamp = timestamp
         print("📊 [ActivityLog] Contacts activity created - ID: \(activity.id?.uuidString ?? "nil")")
