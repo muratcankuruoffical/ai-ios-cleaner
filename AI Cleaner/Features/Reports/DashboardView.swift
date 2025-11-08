@@ -666,9 +666,9 @@ struct DashboardView: View {
         switch contactsAuth {
         case .notDetermined:
             // Request permission directly - show system dialog
-            Task {
-                let granted = await ContactsCleaner.shared.requestAuthorization()
-                await MainActor.run {
+            Task { @MainActor in
+                do {
+                    let granted = await ContactsCleaner.shared.requestAuthorization()
                     if granted {
                         // Permission granted, rescan to get contacts data
                         scanCoordinator.startScan()
@@ -676,6 +676,9 @@ struct DashboardView: View {
                         // User denied, show settings alert
                         showingContactsPermissionAlert = true
                     }
+                } catch {
+                    print("❌ Contacts authorization error: \(error)")
+                    showingContactsPermissionAlert = true
                 }
             }
         case .denied, .restricted:
@@ -695,9 +698,9 @@ struct DashboardView: View {
         switch calendarAuth {
         case .notDetermined:
             // Request permission directly - show system dialog
-            Task {
-                let granted = await CalendarCleaner.shared.requestAuthorization(for: .event)
-                await MainActor.run {
+            Task { @MainActor in
+                do {
+                    let granted = await CalendarCleaner.shared.requestAuthorization(for: .event)
                     if granted {
                         // Permission granted, rescan to get calendar data
                         scanCoordinator.startScan()
@@ -705,6 +708,9 @@ struct DashboardView: View {
                         // User denied, show settings alert
                         showingCalendarPermissionAlert = true
                     }
+                } catch {
+                    print("❌ Calendar authorization error: \(error)")
+                    showingCalendarPermissionAlert = true
                 }
             }
         case .denied, .restricted:
