@@ -172,8 +172,8 @@ struct DashboardView: View {
 
     private func storageDonutCard(_ results: ScanCoordinator.ScanResults?) -> some View {
         let storage = SystemInsights.shared.getStorageInfo()
-        let potentialSavingsBytes = results?.statistics.potentialSavingsBytes ?? 0
-        let potentialSavingsGB = Double(potentialSavingsBytes) / 1_073_741_824 // Convert to GB
+        let totalSavedBytes = SavingsTracker.shared.totalBytesSaved
+        let totalSavedGB = Double(totalSavedBytes) / 1_073_741_824 // Convert to GB
 
         return VStack(spacing: 20) {
             HStack {
@@ -247,25 +247,23 @@ struct DashboardView: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 50)
 
-                    // Can Save - only show if scan results exist
-                    if results != nil {
-                        Divider()
-                            .frame(height: 40)
-                            .background(CleanerTheme.surface)
+                    // Total Saved - always show user's achievements
+                    Divider()
+                        .frame(height: 40)
+                        .background(CleanerTheme.surface)
 
-                        VStack(spacing: 4) {
-                            Text(String(format: "%.1f GB", potentialSavingsGB))
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(CleanerTheme.accent)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                                .multilineTextAlignment(.center)
-                            Text("Can Save")
-                                .cleanerFont(.caption)
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 50)
+                    VStack(spacing: 4) {
+                        Text(String(format: "%.1f GB", totalSavedGB))
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(CleanerTheme.accentGreen)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.center)
+                        Text("Total Saved")
+                            .cleanerFont(.caption)
+                            .lineLimit(1)
                     }
+                    .frame(maxWidth: .infinity, minHeight: 50)
                 }
             }
         }

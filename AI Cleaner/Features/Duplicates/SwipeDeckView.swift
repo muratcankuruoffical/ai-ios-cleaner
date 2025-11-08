@@ -656,6 +656,9 @@ class SwipeDeckViewModel: ObservableObject {
                 if let coordinator = scanCoordinator {
                     coordinator.markAssetsAsDeleted(toDelete)
                 }
+
+                // Track total savings
+                SavingsTracker.shared.addSavedBytes(freedBytes)
             }
 
             toDelete.removeAll()

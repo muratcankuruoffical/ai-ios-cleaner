@@ -612,6 +612,9 @@ struct LargeVideosListView: View {
                     )
                     CoreDataStack.shared.save(context: context)
                     print("🗑️ [LargeVideos] ActivityLog created and saved")
+
+                    // Track total savings
+                    SavingsTracker.shared.addSavedBytes(video.fileSize)
                 }
             } catch {
                 print("❌ Failed to delete video: \(error)")
@@ -792,6 +795,9 @@ struct VideoGroupDetailView: View {
                     CoreDataStack.shared.save(context: context)
                     print("🗑️ [VideoGroupDetail] ActivityLog created and saved")
 
+                    // Track total savings
+                    SavingsTracker.shared.addSavedBytes(video.fileSize)
+
                     // Auto dismiss if all videos are deleted
                     if availableVideos.isEmpty {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -963,6 +969,9 @@ struct PhotoOptimizationView: View {
                 )
                 CoreDataStack.shared.save(context: context)
                 print("🎨 [PhotoOptimization] ActivityLog created and saved")
+
+                // Track total savings
+                SavingsTracker.shared.addSavedBytes(totalSaved)
             }
         }
     }
