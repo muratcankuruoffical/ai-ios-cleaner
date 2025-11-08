@@ -304,49 +304,89 @@ struct BackupRow: View {
     let onRestore: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Selection checkbox
-            Button(action: onSelect) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 24))
-                    .foregroundColor(isSelected ? CleanerTheme.primary : CleanerTheme.textSecondary)
-            }
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                // Selection checkbox
+                Button(action: onSelect) {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 22))
+                        .foregroundColor(isSelected ? CleanerTheme.primary : CleanerTheme.textSecondary)
+                        .frame(width: 32, height: 32)
+                }
 
-            // Backup info
-            VStack(alignment: .leading, spacing: 6) {
-                Text(backup.displayName)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(CleanerTheme.textPrimary)
+                // Backup info
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(backup.displayName)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(CleanerTheme.textPrimary)
+                        .lineLimit(1)
 
-                HStack(spacing: 12) {
-                    Label("\(backup.contactCount) contacts", systemImage: "person.2.fill")
-                        .font(.system(size: 13))
+                    HStack(spacing: 16) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.2.fill")
+                                .font(.system(size: 12))
+                            Text("\(backup.contactCount)")
+                                .font(.system(size: 13, weight: .medium))
+                        }
                         .foregroundColor(CleanerTheme.textSecondary)
 
-                    Label(backup.formattedSize, systemImage: "internaldrive")
-                        .font(.system(size: 13))
+                        HStack(spacing: 6) {
+                            Image(systemName: "internaldrive")
+                                .font(.system(size: 12))
+                            Text(backup.formattedSize)
+                                .font(.system(size: 13, weight: .medium))
+                        }
                         .foregroundColor(CleanerTheme.textSecondary)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                // View Details chevron
+                NavigationLink(destination: BackupDetailView(backup: backup)) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(CleanerTheme.textSecondary)
+                        .frame(width: 32, height: 32)
                 }
             }
+            .padding(16)
 
-            Spacer()
-
-            // Restore button
-            Button(action: onRestore) {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text("Restore")
-                        .font(.system(size: 14, weight: .semibold))
+            // Action buttons row
+            HStack(spacing: 12) {
+                // View Details button
+                NavigationLink(destination: BackupDetailView(backup: backup)) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "list.bullet")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("View Details")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundColor(CleanerTheme.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(CleanerTheme.primary.opacity(0.15))
+                    .cornerRadius(8)
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(CleanerTheme.accentGreen)
-                .cornerRadius(8)
+
+                // Restore button
+                Button(action: onRestore) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("Restore")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(CleanerTheme.accentGreen)
+                    .cornerRadius(8)
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
-        .padding(16)
         .background(CleanerTheme.cardBackground)
         .cornerRadius(12)
     }
