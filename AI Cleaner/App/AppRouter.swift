@@ -26,7 +26,7 @@ struct AppRouter: View {
             } else if !appState.hasPhotoLibraryAccess {
                 PermissionDeniedView()
             } else {
-                DashboardView()
+                MainTabView()
             }
         }
     }
