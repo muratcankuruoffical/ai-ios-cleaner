@@ -26,7 +26,8 @@ final class StorageRecommendations {
         case clearAppCaches = "Clear App Caches"
     }
 
-    struct Recommendation {
+    struct Recommendation: Identifiable {
+        var id: String { type.rawValue }
         let type: RecommendationType
         let title: String
         let description: String

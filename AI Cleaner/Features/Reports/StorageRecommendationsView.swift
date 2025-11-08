@@ -10,7 +10,6 @@ import SwiftUI
 struct StorageRecommendationsView: View {
     let storageInfo: SystemInsights.StorageInfo?
     @State private var selectedRecommendation: StorageRecommendations.Recommendation?
-    @State private var showingInstructions = false
 
     private var recommendations: [StorageRecommendations.Recommendation] {
         StorageRecommendations.shared.getRecommendations(basedOn: storageInfo)
@@ -28,7 +27,6 @@ struct StorageRecommendationsView: View {
                         ForEach(recommendations, id: \.type.rawValue) { recommendation in
                             RecommendationCard(recommendation: recommendation) {
                                 selectedRecommendation = recommendation
-                                showingInstructions = true
                             }
                         }
                     }
@@ -37,10 +35,8 @@ struct StorageRecommendationsView: View {
             }
             .navigationTitle("Storage Tips")
             .navigationBarTitleDisplayMode(.large)
-            .sheet(isPresented: $showingInstructions) {
-                if let recommendation = selectedRecommendation {
-                    InstructionsView(recommendation: recommendation)
-                }
+            .sheet(item: $selectedRecommendation) { recommendation in
+                InstructionsView(recommendation: recommendation)
             }
         }
     }
