@@ -7,7 +7,7 @@
 
 import Foundation
 import Contacts
-import Combine
+internal import Combine
 
 @MainActor
 class ContactsBackupViewModel: ObservableObject {

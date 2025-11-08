@@ -7,7 +7,7 @@
 
 import SwiftUI
 import Photos
-import EventKit
+internal import EventKit
 import Contacts
 
 struct SmartAlbumsView: View {
