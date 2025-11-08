@@ -95,7 +95,7 @@ final class ContactsBackupManager {
                 throw BackupError.importFailed
             }
 
-            // Fetch all contacts
+            // Fetch all contacts (without image data to avoid serialization issues)
             let keysToFetch: [CNKeyDescriptor] = [
                 CNContactGivenNameKey as CNKeyDescriptor,
                 CNContactFamilyNameKey as CNKeyDescriptor,
@@ -104,8 +104,6 @@ final class ContactsBackupManager {
                 CNContactPostalAddressesKey as CNKeyDescriptor,
                 CNContactOrganizationNameKey as CNKeyDescriptor,
                 CNContactBirthdayKey as CNKeyDescriptor,
-                CNContactImageDataAvailableKey as CNKeyDescriptor,
-                CNContactImageDataKey as CNKeyDescriptor,
                 CNContactTypeKey as CNKeyDescriptor
             ]
 
@@ -118,10 +116,41 @@ final class ContactsBackupManager {
 
             print("📇 [ContactsBackup] Fetched \(allContacts.count) contacts")
 
-            // Convert to vCard format
-            let vCardData = try CNContactVCardSerialization.data(with: allContacts)
+            // Convert to vCard format with error handling
+            guard !allContacts.isEmpty else {
+                throw BackupError.importFailed
+            }
 
-            return (allContacts, vCardData)
+            // Try to serialize all contacts, if fails, serialize one by one
+            do {
+                let vCardData = try CNContactVCardSerialization.data(with: allContacts)
+                print("✅ [ContactsBackup] vCard serialization successful - \(vCardData.count) bytes")
+                return (allContacts, vCardData)
+            } catch {
+                print("⚠️ [ContactsBackup] Batch serialization failed, trying individual serialization...")
+
+                // Serialize contacts one by one, skip problematic ones
+                var validContacts: [CNContact] = []
+                var combinedVCardData = Data()
+
+                for (index, contact) in allContacts.enumerated() {
+                    do {
+                        let singleVCardData = try CNContactVCardSerialization.data(with: [contact])
+                        validContacts.append(contact)
+                        combinedVCardData.append(singleVCardData)
+                    } catch {
+                        print("⚠️ [ContactsBackup] Skipping contact \(index) due to serialization error")
+                    }
+                }
+
+                guard !validContacts.isEmpty else {
+                    print("❌ [ContactsBackup] No contacts could be serialized")
+                    throw BackupError.importFailed
+                }
+
+                print("✅ [ContactsBackup] Successfully serialized \(validContacts.count)/\(allContacts.count) contacts")
+                return (validContacts, combinedVCardData)
+            }
         }.value
 
         // Create backup file
