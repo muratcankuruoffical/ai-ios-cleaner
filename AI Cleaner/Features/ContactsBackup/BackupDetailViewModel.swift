@@ -7,7 +7,7 @@
 
 import Foundation
 import Contacts
-import Combine
+internal import Combine
 
 struct BackupContactItem: Identifiable {
     let id: UUID
