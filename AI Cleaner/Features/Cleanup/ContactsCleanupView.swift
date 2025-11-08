@@ -7,9 +7,11 @@
 
 import SwiftUI
 import Contacts
+import CoreData
 
 struct ContactsCleanupView: View {
     let results: ContactsCleaner.ContactsScanResults
+    @EnvironmentObject var scanCoordinator: ScanCoordinator
 
     @State private var selectedGroup: ContactsCleaner.DuplicateContactGroup?
     @State private var showingMergeConfirm = false
@@ -173,6 +175,7 @@ struct ContactsCleanupView: View {
         isProcessing = true
         Task {
             do {
+                print("📇 [ContactsCleanup] Merging \(group.duplicates.count) duplicates into primary contact")
                 _ = try await ContactsCleaner.shared.mergeContacts(
                     keep: primary,
                     merge: group.duplicates
@@ -182,6 +185,17 @@ struct ContactsCleanupView: View {
                     processedGroupIds.insert(group.contacts.first?.identifier ?? "")
                     isProcessing = false
                     selectedGroup = nil
+
+                    // Log activity to CoreData
+                    let context = CoreDataStack.shared.viewContext
+                    ActivityLog.createContactsActivity(
+                        context: context,
+                        count: group.duplicates.count,
+                        category: "Merged \(group.duplicates.count) duplicate\(group.duplicates.count == 1 ? "" : "s")",
+                        timestamp: Date()
+                    )
+                    CoreDataStack.shared.save(context: context)
+                    print("📇 [ContactsCleanup] ActivityLog created and saved")
                 }
             } catch {
                 print("❌ Merge error: \(error)")
@@ -194,12 +208,24 @@ struct ContactsCleanupView: View {
         isProcessing = true
         Task {
             do {
+                print("📇 [ContactsCleanup] Deleting \(group.duplicates.count) duplicate contacts")
                 try await ContactsCleaner.shared.deleteContacts(group.duplicates)
 
                 await MainActor.run {
                     processedGroupIds.insert(group.contacts.first?.identifier ?? "")
                     isProcessing = false
                     selectedGroup = nil
+
+                    // Log activity to CoreData
+                    let context = CoreDataStack.shared.viewContext
+                    ActivityLog.createContactsActivity(
+                        context: context,
+                        count: group.duplicates.count,
+                        category: "Deleted \(group.duplicates.count) duplicate\(group.duplicates.count == 1 ? "" : "s")",
+                        timestamp: Date()
+                    )
+                    CoreDataStack.shared.save(context: context)
+                    print("📇 [ContactsCleanup] ActivityLog created and saved")
                 }
             } catch {
                 print("❌ Delete error: \(error)")

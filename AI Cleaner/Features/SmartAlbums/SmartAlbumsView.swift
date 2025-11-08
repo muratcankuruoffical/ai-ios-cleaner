@@ -243,12 +243,14 @@ struct SmartAlbumsView: View {
         case .contacts:
             if let contactsResults = scanResults.contactsResults {
                 ContactsCleanupView(results: contactsResults)
+                    .environmentObject(scanCoordinator)
             } else {
                 Text("No contacts data available")
             }
         case .calendar:
             if let calendarResults = scanResults.calendarResults {
                 CalendarCleanupView(results: calendarResults)
+                    .environmentObject(scanCoordinator)
             } else {
                 Text("No calendar data available")
             }

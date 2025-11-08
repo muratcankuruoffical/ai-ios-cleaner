@@ -7,9 +7,11 @@
 
 import SwiftUI
 internal import EventKit
+import CoreData
 
 struct CalendarCleanupView: View {
     let results: CalendarCleaner.CalendarScanResults
+    @EnvironmentObject var scanCoordinator: ScanCoordinator
 
     @State private var selectedTab = 0
     @State private var deletedEventIds = Set<String>()
@@ -290,10 +292,23 @@ struct CalendarCleanupView: View {
         isDeleting = true
         Task {
             do {
+                print("📅 [CalendarCleanup] Deleting event: \(event.title ?? "Untitled")")
                 try CalendarCleaner.shared.deleteEvents([event])
                 await MainActor.run {
                     deletedEventIds.insert(event.eventIdentifier)
                     isDeleting = false
+
+                    // Log activity to CoreData
+                    let context = CoreDataStack.shared.viewContext
+                    let category = event.startDate < Date() ? "past event" : "declined event"
+                    ActivityLog.createCalendarActivity(
+                        context: context,
+                        count: 1,
+                        category: category,
+                        timestamp: Date()
+                    )
+                    CoreDataStack.shared.save(context: context)
+                    print("📅 [CalendarCleanup] ActivityLog created and saved")
                 }
             } catch {
                 print("❌ Delete event error: \(error)")
@@ -306,10 +321,22 @@ struct CalendarCleanupView: View {
         isDeleting = true
         Task {
             do {
+                print("📅 [CalendarCleanup] Deleting reminder: \(reminder.title ?? "Untitled")")
                 try CalendarCleaner.shared.deleteReminders([reminder])
                 await MainActor.run {
                     deletedReminderIds.insert(reminder.calendarItemIdentifier)
                     isDeleting = false
+
+                    // Log activity to CoreData
+                    let context = CoreDataStack.shared.viewContext
+                    ActivityLog.createCalendarActivity(
+                        context: context,
+                        count: 1,
+                        category: "reminder",
+                        timestamp: Date()
+                    )
+                    CoreDataStack.shared.save(context: context)
+                    print("📅 [CalendarCleanup] ActivityLog created and saved")
                 }
             } catch {
                 print("❌ Delete reminder error: \(error)")

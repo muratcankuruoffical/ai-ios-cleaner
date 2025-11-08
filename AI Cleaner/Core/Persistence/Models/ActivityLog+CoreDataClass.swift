@@ -18,6 +18,8 @@ public class ActivityLog: NSManagedObject {
         case photosDeleted = "photos_deleted"
         case cacheCleared = "cache_cleared"
         case optimizationCompleted = "optimization_completed"
+        case calendarCleaned = "calendar_cleaned"
+        case contactsCleaned = "contacts_cleaned"
     }
 
     // MARK: - Helper Methods
@@ -63,6 +65,16 @@ public class ActivityLog: NSManagedObject {
             return "Cache cleared"
         case .optimizationCompleted:
             return "Optimized \(itemCount) photo\(itemCount == 1 ? "" : "s")"
+        case .calendarCleaned:
+            if let category = category {
+                return "Deleted \(itemCount) \(category.lowercased())"
+            }
+            return "Deleted \(itemCount) calendar item\(itemCount == 1 ? "" : "s")"
+        case .contactsCleaned:
+            if let category = category {
+                return category // e.g., "Merged 3 contacts" or "Deleted 2 duplicates"
+            }
+            return "Cleaned \(itemCount) contact\(itemCount == 1 ? "" : "s")"
         case .none:
             return "Activity completed"
         }
@@ -78,6 +90,10 @@ public class ActivityLog: NSManagedObject {
             return "arrow.clockwise.circle.fill"
         case .optimizationCompleted:
             return "wand.and.stars.fill"
+        case .calendarCleaned:
+            return "calendar.badge.minus"
+        case .contactsCleaned:
+            return "person.crop.circle.badge.checkmark"
         case .none:
             return "circle.fill"
         }
@@ -93,6 +109,10 @@ public class ActivityLog: NSManagedObject {
             return "blue"
         case .optimizationCompleted:
             return "purple"
+        case .calendarCleaned:
+            return "teal"
+        case .contactsCleaned:
+            return "brown"
         case .none:
             return "gray"
         }
@@ -155,6 +175,44 @@ public class ActivityLog: NSManagedObject {
         activity.category = deletedOriginals ? "Optimized (originals deleted)" : "Optimized (originals kept)"
         activity.timestamp = timestamp
         print("📊 [ActivityLog] Optimization activity created - ID: \(activity.id?.uuidString ?? "nil")")
+        return activity
+    }
+
+    @discardableResult
+    static func createCalendarActivity(
+        context: NSManagedObjectContext,
+        count: Int,
+        category: String, // e.g., "past events", "reminders", "declined events"
+        timestamp: Date = Date()
+    ) -> ActivityLog {
+        print("📊 [ActivityLog] Creating calendar activity - count: \(count), category: \(category)")
+        let activity = ActivityLog(context: context)
+        activity.id = UUID()
+        activity.type = ActivityType.calendarCleaned.rawValue
+        activity.itemCount = Int32(count)
+        activity.freedBytes = 0
+        activity.category = category
+        activity.timestamp = timestamp
+        print("📊 [ActivityLog] Calendar activity created - ID: \(activity.id?.uuidString ?? "nil")")
+        return activity
+    }
+
+    @discardableResult
+    static func createContactsActivity(
+        context: NSManagedObjectContext,
+        count: Int,
+        category: String, // e.g., "Merged 3 contacts", "Deleted 2 duplicates"
+        timestamp: Date = Date()
+    ) -> ActivityLog {
+        print("📊 [ActivityLog] Creating contacts activity - count: \(count), category: \(category)")
+        let activity = ActivityLog(context: context)
+        activity.id = UUID()
+        activity.type = ActivityType.contactsCleaned.rawValue
+        activity.itemCount = Int32(count)
+        activity.freedBytes = 0
+        activity.category = category
+        activity.timestamp = timestamp
+        print("📊 [ActivityLog] Contacts activity created - ID: \(activity.id?.uuidString ?? "nil")")
         return activity
     }
 
