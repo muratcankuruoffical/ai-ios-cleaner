@@ -7,6 +7,7 @@
 
 import Foundation
 import Contacts
+import CoreData
 
 final class ContactsBackupManager {
     static let shared = ContactsBackupManager()
@@ -186,6 +187,17 @@ final class ContactsBackupManager {
             "contact_count": contactCount,
             "file_size": fileSize
         ])
+
+        // Add to activity log
+        await MainActor.run {
+            let context = CoreDataStack.shared.viewContext
+            ActivityLog.createContactsActivity(
+                context: context,
+                count: contactCount,
+                category: "Backup completed"
+            )
+            CoreDataStack.shared.save()
+        }
 
         return backup
     }

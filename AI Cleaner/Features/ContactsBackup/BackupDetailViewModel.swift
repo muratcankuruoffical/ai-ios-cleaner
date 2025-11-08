@@ -7,6 +7,7 @@
 
 import Foundation
 import Contacts
+import CoreData
 internal import Combine
 
 struct BackupContactItem: Identifiable {
@@ -197,6 +198,16 @@ class BackupDetailViewModel: ObservableObject {
 
             // Save count before clearing selection
             restoredContactCount = selectedContacts.count
+
+            // Add to activity log
+            let context = CoreDataStack.shared.viewContext
+            ActivityLog.createContactsActivity(
+                context: context,
+                count: selectedContacts.count,
+                category: "Restored \(selectedContacts.count) contact\(selectedContacts.count == 1 ? "" : "s")"
+            )
+            CoreDataStack.shared.save()
+
             showingSuccess = true
             selectedContactIds.removeAll()
 

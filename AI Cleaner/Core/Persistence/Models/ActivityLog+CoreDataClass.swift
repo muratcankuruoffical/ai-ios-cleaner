@@ -97,6 +97,13 @@ public class ActivityLog: NSManagedObject {
         case .calendarCleaned:
             return "calendar.badge.minus"
         case .contactsCleaned:
+            if let category = category {
+                if category.lowercased().contains("backup") {
+                    return "square.and.arrow.down.fill"
+                } else if category.lowercased().contains("restored") {
+                    return "arrow.counterclockwise.circle.fill"
+                }
+            }
             return "person.crop.circle.badge.checkmark"
         case .none:
             return "circle.fill"
@@ -116,6 +123,13 @@ public class ActivityLog: NSManagedObject {
         case .calendarCleaned:
             return "teal"
         case .contactsCleaned:
+            if let category = category {
+                if category.lowercased().contains("backup") {
+                    return "blue"
+                } else if category.lowercased().contains("restored") {
+                    return "green"
+                }
+            }
             return "brown"
         case .none:
             return "gray"
