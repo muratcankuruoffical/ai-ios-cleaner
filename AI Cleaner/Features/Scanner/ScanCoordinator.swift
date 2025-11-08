@@ -136,6 +136,7 @@ class ScanCoordinator: ObservableObject {
             }
             if let calendarResults = calendarResults {
                 total += calendarResults.totalCleanableEvents
+                total += calendarResults.totalCleanableReminders
             }
 
             return total
@@ -150,15 +151,19 @@ class ScanCoordinator: ObservableObject {
         var issuesDescription: String {
             let photoCount = statistics.totalDuplicates + blurryPhotos.count + darkPhotos.count + screenshots.count + optimizablePhotos.count + documents.count
             let videoCount = largeVideos.count + similarVideoGroups.reduce(0) { $0 + $1.videos.count }
+            let contactsCount = contactsResults?.totalDuplicates ?? 0
+            let calendarCount = (calendarResults?.totalCleanableEvents ?? 0) + (calendarResults?.totalCleanableReminders ?? 0)
 
-            if photoCount > 0 && videoCount > 0 {
-                return "\(photoCount) Photos • \(videoCount) Videos"
-            } else if photoCount > 0 {
-                return "\(photoCount) Photos"
-            } else if videoCount > 0 {
-                return "\(videoCount) Videos"
-            } else {
+            var parts: [String] = []
+            if photoCount > 0 { parts.append("\(photoCount) Photos") }
+            if videoCount > 0 { parts.append("\(videoCount) Videos") }
+            if contactsCount > 0 { parts.append("\(contactsCount) Contacts") }
+            if calendarCount > 0 { parts.append("\(calendarCount) Calendar") }
+
+            if parts.isEmpty {
                 return "No issues found"
+            } else {
+                return parts.joined(separator: " • ")
             }
         }
     }
@@ -535,6 +540,26 @@ class ScanCoordinator: ObservableObject {
         let optimizationSavings = photoOptimizer.calculateTotalSavings(photos: optimizablePhotos)
         totalSavings += optimizationSavings
         print("   📉 Optimizable Photos: \(formatBytes(optimizationSavings)) (\(optimizablePhotos.count) photos)")
+
+        // Add contacts savings
+        var contactsSavings: Int64 = 0
+        if let contactsResults = contactsResults {
+            for group in contactsResults.duplicateGroups {
+                contactsSavings += contactsCleaner.estimateTotalSize(group.duplicates)
+            }
+            totalSavings += contactsSavings
+            print("   📇 Duplicate Contacts: \(formatBytes(contactsSavings)) (\(contactsResults.totalDuplicates) contacts)")
+        }
+
+        // Add calendar savings
+        var calendarSavings: Int64 = 0
+        if let calendarResults = calendarResults {
+            calendarSavings += calendarCleaner.estimateTotalEventSize(calendarResults.pastEvents)
+            calendarSavings += calendarCleaner.estimateTotalEventSize(calendarResults.declinedEvents)
+            calendarSavings += calendarCleaner.estimateTotalReminderSize(calendarResults.completedReminders)
+            totalSavings += calendarSavings
+            print("   📅 Calendar Items: \(formatBytes(calendarSavings)) (\(calendarResults.totalCleanableEvents + calendarResults.totalCleanableReminders) items)")
+        }
 
         print("   ✨ TOTAL POTENTIAL SAVINGS: \(formatBytes(totalSavings))")
 
