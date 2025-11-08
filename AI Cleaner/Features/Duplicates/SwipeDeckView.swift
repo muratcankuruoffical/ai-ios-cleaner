@@ -2,7 +2,7 @@
 //  SwipeDeckView.swift
 //  AI Cleaner
 //
-//  Tinder-like swipe interface for reviewing and deleting photos - Dark Theme
+//  Modern swipe interface for reviewing and deleting photos
 //
 
 import SwiftUI
@@ -20,13 +20,16 @@ struct SwipeDeckView: View {
 
     var body: some View {
         ZStack {
-            // Dark Background
+            // Background
             CleanerTheme.background
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header
                 headerView
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
+                    .background(CleanerTheme.surface)
 
                 // Main Card Stack
                 if viewModel.hasMoreCards {
@@ -41,18 +44,25 @@ struct SwipeDeckView: View {
                                     viewModel.handleSwipe(direction: direction)
                                 }
                             )
-                            .offset(y: CGFloat(index * 8))
-                            .scaleEffect(1.0 - CGFloat(index) * 0.05)
+                            .offset(y: CGFloat(index * 10))
+                            .scaleEffect(1.0 - CGFloat(index) * 0.03)
                             .zIndex(Double(viewModel.remainingCards.count - index))
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 12)
                 } else {
                     completionView
                 }
 
                 // Action Buttons
-                actionButtonsView
+                if viewModel.hasMoreCards {
+                    actionButtonsView
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 20)
+                        .background(CleanerTheme.surface)
+                }
             }
         }
         .navigationTitle("Review Photos")
@@ -80,17 +90,21 @@ struct SwipeDeckView: View {
     // MARK: - Header
 
     private var headerView: some View {
-        HStack {
+        HStack(spacing: 16) {
+            // Progress
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(viewModel.currentIndex + 1) / \(viewModel.totalCards)")
-                    .font(.system(size: 18, weight: .bold))
+                Text("\(viewModel.currentIndex + 1) of \(viewModel.totalCards)")
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(CleanerTheme.textPrimary)
-                Text("Swipe to review")
-                    .cleanerFont(.caption)
+
+                ProgressView(value: Double(viewModel.currentIndex), total: Double(viewModel.totalCards))
+                    .tint(CleanerTheme.primary)
+                    .frame(width: 100)
             }
 
             Spacer()
 
+            // Stats
             HStack(spacing: 12) {
                 StatBadge(
                     icon: "checkmark.circle.fill",
@@ -104,45 +118,105 @@ struct SwipeDeckView: View {
                     color: CleanerTheme.accentRed
                 )
             }
+
+            // Undo Button
+            Button(action: {
+                viewModel.undo()
+            }) {
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(viewModel.swipeHistory.isEmpty ? CleanerTheme.textSecondary.opacity(0.4) : CleanerTheme.primary)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(viewModel.swipeHistory.isEmpty ? CleanerTheme.cardBackground : CleanerTheme.primary.opacity(0.15))
+                    )
+            }
+            .disabled(viewModel.swipeHistory.isEmpty)
         }
-        .padding()
-        .background(CleanerTheme.surface)
     }
 
     // MARK: - Completion View
 
     private var completionView: some View {
         VStack(spacing: 32) {
+            Spacer()
+
             ZStack {
                 Circle()
-                    .fill(CleanerTheme.accentGreen.opacity(0.2))
-                    .frame(width: 120, height: 120)
+                    .fill(
+                        LinearGradient(
+                            colors: [CleanerTheme.accentGreen.opacity(0.3), CleanerTheme.accentGreen.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 140, height: 140)
 
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 80))
+                    .font(.system(size: 90))
                     .foregroundColor(CleanerTheme.accentGreen)
             }
 
             VStack(spacing: 12) {
                 Text("Review Complete!")
-                    .cleanerFont(.title)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
 
-                Text("Kept: \(viewModel.toKeep.count) • To Delete: \(viewModel.toDelete.count)")
-                    .cleanerFont(.body)
+                HStack(spacing: 24) {
+                    VStack(spacing: 4) {
+                        Text("\(viewModel.toKeep.count)")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(CleanerTheme.accentGreen)
+                        Text("Kept")
+                            .font(.system(size: 14))
+                            .foregroundColor(CleanerTheme.textSecondary)
+                    }
+
+                    Rectangle()
+                        .fill(CleanerTheme.textSecondary.opacity(0.3))
+                        .frame(width: 1, height: 40)
+
+                    VStack(spacing: 4) {
+                        Text("\(viewModel.toDelete.count)")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(CleanerTheme.accentRed)
+                        Text("To Delete")
+                            .font(.system(size: 14))
+                            .foregroundColor(CleanerTheme.textSecondary)
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 20)
+                .background(CleanerTheme.surface)
+                .cornerRadius(16)
             }
 
-            VStack(spacing: 12) {
+            Spacer()
+
+            VStack(spacing: 16) {
                 if !viewModel.toDelete.isEmpty {
                     Button(action: {
                         viewModel.showingDeleteConfirmation = true
                     }) {
-                        Text("Delete Selected Photos")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: 300)
-                            .padding(.vertical, 16)
-                            .background(CleanerTheme.accentRed)
-                            .cornerRadius(16)
+                        HStack(spacing: 12) {
+                            Image(systemName: "trash.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                            Text("Delete \(viewModel.toDelete.count) Photo\(viewModel.toDelete.count == 1 ? "" : "s")")
+                                .font(.system(size: 18, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(
+                            LinearGradient(
+                                colors: [CleanerTheme.accentRed, CleanerTheme.accentRed.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(16)
+                        .shadow(color: CleanerTheme.accentRed.opacity(0.4), radius: 12, x: 0, y: 6)
                     }
                 }
 
@@ -152,8 +226,8 @@ struct SwipeDeckView: View {
                     Text("Done")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
-                        .frame(maxWidth: 300)
-                        .padding(.vertical, 16)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
                         .background(
                             LinearGradient(
                                 colors: [CleanerTheme.primary, Color(hex: "#0066DD")],
@@ -162,76 +236,70 @@ struct SwipeDeckView: View {
                             )
                         )
                         .cornerRadius(16)
+                        .shadow(color: CleanerTheme.primary.opacity(0.4), radius: 12, x: 0, y: 6)
                 }
             }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
         }
-        .padding()
     }
 
     // MARK: - Action Buttons
 
     private var actionButtonsView: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 16) {
             // Keep Button
             Button(action: {
                 viewModel.handleSwipe(direction: .left)
             }) {
-                VStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 32))
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 24, weight: .bold))
                     Text("Keep")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 18, weight: .semibold))
                 }
-                .foregroundColor(CleanerTheme.accentGreen)
-                .frame(width: 80, height: 80)
-                .background(CleanerTheme.accentGreen.opacity(0.15))
-                .cornerRadius(40)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background(
+                    LinearGradient(
+                        colors: [CleanerTheme.accentGreen, CleanerTheme.accentGreen.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .cornerRadius(16)
+                .shadow(color: CleanerTheme.accentGreen.opacity(0.3), radius: 12, x: 0, y: 6)
             }
-
-            Spacer()
-
-            // Undo Button
-            Button(action: {
-                viewModel.undo()
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(CleanerTheme.surface)
-                        .frame(width: 56, height: 56)
-
-                    Image(systemName: "arrow.uturn.backward.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(viewModel.swipeHistory.isEmpty ? CleanerTheme.iconPrimary.opacity(0.5) : CleanerTheme.iconActive)
-                }
-            }
-            .disabled(viewModel.swipeHistory.isEmpty)
-
-            Spacer()
 
             // Delete Button
             Button(action: {
                 viewModel.handleSwipe(direction: .right)
             }) {
-                VStack(spacing: 8) {
-                    Image(systemName: "trash.circle.fill")
-                        .font(.system(size: 32))
+                HStack(spacing: 10) {
+                    Image(systemName: "trash.fill")
+                        .font(.system(size: 24, weight: .bold))
                     Text("Delete")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 18, weight: .semibold))
                 }
-                .foregroundColor(CleanerTheme.accentRed)
-                .frame(width: 80, height: 80)
-                .background(CleanerTheme.accentRed.opacity(0.15))
-                .cornerRadius(40)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background(
+                    LinearGradient(
+                        colors: [CleanerTheme.accentRed, CleanerTheme.accentRed.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .cornerRadius(16)
+                .shadow(color: CleanerTheme.accentRed.opacity(0.3), radius: 12, x: 0, y: 6)
             }
         }
-        .padding()
-        .padding(.bottom, 8)
-        .background(CleanerTheme.surface)
-        .disabled(!viewModel.hasMoreCards)
     }
 }
 
-// MARK: - Swipe Card (Dark Theme)
+// MARK: - Swipe Card
 
 struct SwipeCardView: View {
     let asset: PHAsset
@@ -249,44 +317,56 @@ struct SwipeCardView: View {
     // Calculate optimal card height based on screen size
     private var cardHeight: CGFloat {
         let screenHeight = UIScreen.main.bounds.height
-        // Use 60% of screen height, max 600, min 400
-        return min(max(screenHeight * 0.6, 400), 600)
+        // Use 65% of available height
+        return screenHeight * 0.65
     }
 
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .topLeading) {
-                // Card Background
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(CleanerTheme.surface)
-                    .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 6)
+            ZStack(alignment: .bottom) {
+                // Card Background with gradient
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        LinearGradient(
+                            colors: [CleanerTheme.surface, CleanerTheme.cardBackground],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
 
                 // Image
                 if let image = image {
                     Image(uiImage: image)
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
+                        .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: cardHeight)
                         .clipped()
-                        .cornerRadius(20)
+                        .cornerRadius(24)
                 } else {
                     ZStack {
-                        CleanerTheme.cardBackground
-                            .cornerRadius(20)
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(CleanerTheme.cardBackground)
 
                         ProgressView()
                             .tint(CleanerTheme.primary)
+                            .scaleEffect(1.5)
                     }
                     .frame(width: geometry.size.width, height: cardHeight)
                 }
 
-                // Gradient Overlay
+                // Bottom gradient for info readability
                 LinearGradient(
-                    colors: [Color.clear, CleanerTheme.background.opacity(0.8)],
-                    startPoint: .center,
+                    colors: [
+                        Color.clear,
+                        Color.black.opacity(0.3),
+                        Color.black.opacity(0.7)
+                    ],
+                    startPoint: .top,
                     endPoint: .bottom
                 )
-                .cornerRadius(20)
+                .frame(height: 150)
+                .cornerRadius(24)
 
                 // Swipe Indicators
                 if isTop {
@@ -295,6 +375,7 @@ struct SwipeCardView: View {
 
                 // Info Overlay
                 infoOverlay
+                    .padding(20)
             }
             .frame(width: geometry.size.width, height: cardHeight)
             .offset(x: offset.width, y: 0)
@@ -326,16 +407,22 @@ struct SwipeCardView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        ZStack {
-                            Circle()
-                                .fill(CleanerTheme.accentGreen.opacity(0.9))
-                                .frame(width: 80, height: 80)
+                        VStack(spacing: 8) {
+                            ZStack {
+                                Circle()
+                                    .fill(CleanerTheme.accentGreen)
+                                    .frame(width: 100, height: 100)
 
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 40, weight: .bold))
-                                .foregroundColor(.white)
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 50, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+
+                            Text("KEEP")
+                                .font(.system(size: 20, weight: .black))
+                                .foregroundColor(CleanerTheme.accentGreen)
                         }
-                        .padding(32)
+                        .padding(40)
                     }
                     Spacer()
                 }
@@ -346,16 +433,22 @@ struct SwipeCardView: View {
             if offset.width > 50 {
                 VStack {
                     HStack {
-                        ZStack {
-                            Circle()
-                                .fill(CleanerTheme.accentRed.opacity(0.9))
-                                .frame(width: 80, height: 80)
+                        VStack(spacing: 8) {
+                            ZStack {
+                                Circle()
+                                    .fill(CleanerTheme.accentRed)
+                                    .frame(width: 100, height: 100)
 
-                            Image(systemName: "trash")
-                                .font(.system(size: 36, weight: .bold))
-                                .foregroundColor(.white)
+                                Image(systemName: "trash.fill")
+                                    .font(.system(size: 45, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+
+                            Text("DELETE")
+                                .font(.system(size: 20, weight: .black))
+                                .foregroundColor(CleanerTheme.accentRed)
                         }
-                        .padding(32)
+                        .padding(40)
                         Spacer()
                     }
                     Spacer()
@@ -368,26 +461,25 @@ struct SwipeCardView: View {
     // MARK: - Info Overlay
 
     private var infoOverlay: some View {
-        VStack {
-            Spacer()
-
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 12) {
+            // Date and size
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 14, weight: .semibold))
                     Text(formatDate(asset.creationDate))
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-
-                    Text("\(asset.pixelWidth) × \(asset.pixelHeight)")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(.system(size: 15, weight: .medium))
                 }
-                .padding(12)
-                .background(CleanerTheme.surface.opacity(0.8))
-                .cornerRadius(12)
+                .foregroundColor(.white)
 
-                Spacer()
+                HStack(spacing: 8) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("\(asset.pixelWidth) × \(asset.pixelHeight)")
+                        .font(.system(size: 15, weight: .medium))
+                }
+                .foregroundColor(.white.opacity(0.9))
             }
-            .padding()
         }
     }
 
@@ -583,7 +675,7 @@ enum SwipeDirection {
     case right // Delete
 }
 
-// MARK: - Stat Badge (Dark Theme)
+// MARK: - Stat Badge
 
 struct StatBadge: View {
     let icon: String
@@ -593,14 +685,14 @@ struct StatBadge: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 14))
-            Text("\(count)")
                 .font(.system(size: 14, weight: .semibold))
+            Text("\(count)")
+                .font(.system(size: 15, weight: .bold))
         }
         .foregroundColor(color)
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(color.opacity(0.15))
+        .padding(.vertical, 8)
+        .background(color.opacity(0.2))
         .cornerRadius(12)
     }
 }
