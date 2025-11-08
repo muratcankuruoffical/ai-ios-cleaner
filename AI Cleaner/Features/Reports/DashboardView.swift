@@ -70,6 +70,10 @@ struct DashboardView: View {
                         // Storage Recommendations
                         storageRecommendationsWidget
                             .transition(.scale.combined(with: .opacity))
+
+                        // Tools Section
+                        toolsSection
+                            .transition(.scale.combined(with: .opacity))
                     }
                     .padding()
                     .opacity(animateContent ? 1 : 0)
@@ -727,6 +731,68 @@ struct DashboardView: View {
     private var storageRecommendationsWidget: some View {
         let storage = SystemInsights.shared.getStorageInfo()
         return CompactRecommendationsWidget(storageInfo: storage)
+    }
+
+    // MARK: - Tools Section
+
+    private var toolsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("TOOLS")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(CleanerTheme.textSecondary)
+                .tracking(1.2)
+
+            NavigationLink(destination: ContactsBackupView()) {
+                ToolCard(
+                    icon: "person.2.crop.square.stack.fill",
+                    title: "Contact Backup",
+                    description: "Backup and restore your contacts",
+                    color: CleanerTheme.primary
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Tool Card
+
+struct ToolCard: View {
+    let icon: String
+    let title: String
+    let description: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 60, height: 60)
+
+                Image(systemName: icon)
+                    .font(.system(size: 28))
+                    .foregroundColor(color)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+
+                Text(description)
+                    .font(.system(size: 14))
+                    .foregroundColor(CleanerTheme.textSecondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(CleanerTheme.textSecondary)
+        }
+        .padding(20)
+        .background(CleanerTheme.surface)
+        .cornerRadius(16)
     }
 }
 
