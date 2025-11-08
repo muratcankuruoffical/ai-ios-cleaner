@@ -76,7 +76,12 @@ final class VisionSceneAnalyzer {
 
     private func performSceneClassification(on cgImage: CGImage) async throws -> [SceneLabel] {
         return try await withCheckedThrowingContinuation { continuation in
+            var isResumed = false
+
             let request = VNClassifyImageRequest { request, error in
+                guard !isResumed else { return }
+                isResumed = true
+
                 if let error = error {
                     continuation.resume(throwing: error)
                     return
@@ -106,7 +111,11 @@ final class VisionSceneAnalyzer {
             do {
                 try handler.perform([request])
             } catch {
-                continuation.resume(throwing: error)
+                // Only resume if the completion handler hasn't been called yet
+                if !isResumed {
+                    isResumed = true
+                    continuation.resume(throwing: error)
+                }
             }
         }
     }

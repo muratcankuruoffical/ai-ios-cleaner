@@ -22,7 +22,7 @@ struct MainTabView: View {
             // AI Photo Search Tab
             AIPhotoSearchView()
                 .tabItem {
-                    Label("AI Search", systemImage: "sparkles.magnifyingglass")
+                    Label("AI Search", systemImage: "sparkles")
                 }
                 .tag(1)
 
