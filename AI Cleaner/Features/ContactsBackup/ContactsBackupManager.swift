@@ -90,21 +90,21 @@ final class ContactsBackupManager {
         }
 
         // Perform heavy operations on background thread
-        let (allContacts, vCardData) = try await Task.detached { [weak self] () -> ([CNContact], Data) in
+        let (contactCount, jsonData) = try await Task.detached { [weak self] () -> (Int, Data) in
             guard let self = self else {
                 throw BackupError.importFailed
             }
 
-            // Fetch all contacts (without image data to avoid serialization issues)
+            // Fetch all contacts
             let keysToFetch: [CNKeyDescriptor] = [
+                CNContactIdentifierKey as CNKeyDescriptor,
                 CNContactGivenNameKey as CNKeyDescriptor,
                 CNContactFamilyNameKey as CNKeyDescriptor,
                 CNContactPhoneNumbersKey as CNKeyDescriptor,
                 CNContactEmailAddressesKey as CNKeyDescriptor,
                 CNContactPostalAddressesKey as CNKeyDescriptor,
                 CNContactOrganizationNameKey as CNKeyDescriptor,
-                CNContactBirthdayKey as CNKeyDescriptor,
-                CNContactTypeKey as CNKeyDescriptor
+                CNContactBirthdayKey as CNKeyDescriptor
             ]
 
             var allContacts: [CNContact] = []
@@ -116,49 +116,37 @@ final class ContactsBackupManager {
 
             print("📇 [ContactsBackup] Fetched \(allContacts.count) contacts")
 
-            // Convert to vCard format with error handling
             guard !allContacts.isEmpty else {
                 throw BackupError.importFailed
             }
 
-            // Try to serialize all contacts, if fails, serialize one by one
-            do {
-                let vCardData = try CNContactVCardSerialization.data(with: allContacts)
-                print("✅ [ContactsBackup] vCard serialization successful - \(vCardData.count) bytes")
-                return (allContacts, vCardData)
-            } catch {
-                print("⚠️ [ContactsBackup] Batch serialization failed, trying individual serialization...")
+            // Convert to SerializableContact
+            let serializableContacts = allContacts.map { SerializableContact(from: $0) }
 
-                // Serialize contacts one by one, skip problematic ones
-                var validContacts: [CNContact] = []
-                var combinedVCardData = Data()
+            // Create backup data structure
+            let backupData = ContactsBackupData(
+                version: "1.0",
+                createdAt: Date(),
+                contacts: serializableContacts
+            )
 
-                for (index, contact) in allContacts.enumerated() {
-                    do {
-                        let singleVCardData = try CNContactVCardSerialization.data(with: [contact])
-                        validContacts.append(contact)
-                        combinedVCardData.append(singleVCardData)
-                    } catch {
-                        print("⚠️ [ContactsBackup] Skipping contact \(index) due to serialization error")
-                    }
-                }
+            // Encode to JSON
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = .prettyPrinted
 
-                guard !validContacts.isEmpty else {
-                    print("❌ [ContactsBackup] No contacts could be serialized")
-                    throw BackupError.importFailed
-                }
+            let jsonData = try encoder.encode(backupData)
+            print("✅ [ContactsBackup] JSON serialization successful - \(jsonData.count) bytes")
 
-                print("✅ [ContactsBackup] Successfully serialized \(validContacts.count)/\(allContacts.count) contacts")
-                return (validContacts, combinedVCardData)
-            }
+            return (allContacts.count, jsonData)
         }.value
 
         // Create backup file
         let backupId = UUID()
-        let fileName = "\(backupId.uuidString).vcf"
+        let fileName = "\(backupId.uuidString).json"
         let fileURL = backupDirectoryURL.appendingPathComponent(fileName)
 
-        try vCardData.write(to: fileURL)
+        try jsonData.write(to: fileURL)
 
         // Get file size
         let attributes = try fileManager.attributesOfItem(atPath: fileURL.path)
@@ -168,7 +156,7 @@ final class ContactsBackupManager {
         let backup = ContactBackup(
             id: backupId,
             createdAt: Date(),
-            contactCount: allContacts.count,
+            contactCount: contactCount,
             fileSize: fileSize,
             fileName: fileName
         )
@@ -190,12 +178,12 @@ final class ContactsBackupManager {
         saveBackupsMetadata()
 
         print("✅ [ContactsBackup] Backup created successfully: \(fileName)")
-        print("   Contact count: \(allContacts.count)")
+        print("   Contact count: \(contactCount)")
         print("   File size: \(backup.formattedSize)")
 
         // Track in analytics
         AnalyticsManager.shared.logEvent("contacts_backup_created", parameters: [
-            "contact_count": allContacts.count,
+            "contact_count": contactCount,
             "file_size": fileSize
         ])
 
@@ -230,10 +218,14 @@ final class ContactsBackupManager {
                 throw BackupError.backupFileNotFound
             }
 
-            let vCardData = try Data(contentsOf: fileURL)
-            let contacts = try CNContactVCardSerialization.contacts(with: vCardData)
+            let jsonData = try Data(contentsOf: fileURL)
 
-            print("📇 [ContactsBackup] Loaded \(contacts.count) contacts from backup")
+            // Decode JSON
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+
+            let backupData = try decoder.decode(ContactsBackupData.self, from: jsonData)
+            print("📇 [ContactsBackup] Loaded \(backupData.contacts.count) contacts from backup (version \(backupData.version))")
 
             if mode == .replace {
                 // Delete all existing contacts
@@ -244,19 +236,19 @@ final class ContactsBackupManager {
             // Import contacts
             let saveRequest = CNSaveRequest()
 
-            for contact in contacts {
-                let mutableContact = contact.mutableCopy() as! CNMutableContact
+            for serializableContact in backupData.contacts {
+                let mutableContact = serializableContact.toCNContact()
                 saveRequest.add(mutableContact, toContainerWithIdentifier: nil)
             }
 
             try self.contactStore.execute(saveRequest)
 
-            print("✅ [ContactsBackup] Restore completed - \(contacts.count) contacts")
+            print("✅ [ContactsBackup] Restore completed - \(backupData.contacts.count) contacts")
 
             // Track in analytics
             await MainActor.run {
                 AnalyticsManager.shared.logEvent("contacts_backup_restored", parameters: [
-                    "contact_count": contacts.count,
+                    "contact_count": backupData.contacts.count,
                     "mode": mode == .merge ? "merge" : "replace"
                 ])
             }
