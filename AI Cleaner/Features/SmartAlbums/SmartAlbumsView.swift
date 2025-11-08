@@ -925,7 +925,7 @@ struct PhotoOptimizationView: View {
                 }
 
                 // Calculate total space saved
-                let totalSaved = results.reduce(0) { $0 + $1.spaceSaved }
+                let totalSaved = results.reduce(into: 0) { $0 += $1.savedBytes }
                 print("🎨 [PhotoOptimization] Total space saved: \(totalSaved) bytes")
 
                 // Log activity to CoreData
