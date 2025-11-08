@@ -89,31 +89,40 @@ final class ContactsBackupManager {
             throw BackupError.unauthorized
         }
 
-        // Fetch all contacts
-        let keysToFetch: [CNKeyDescriptor] = [
-            CNContactGivenNameKey as CNKeyDescriptor,
-            CNContactFamilyNameKey as CNKeyDescriptor,
-            CNContactPhoneNumbersKey as CNKeyDescriptor,
-            CNContactEmailAddressesKey as CNKeyDescriptor,
-            CNContactPostalAddressesKey as CNKeyDescriptor,
-            CNContactOrganizationNameKey as CNKeyDescriptor,
-            CNContactBirthdayKey as CNKeyDescriptor,
-            CNContactImageDataAvailableKey as CNKeyDescriptor,
-            CNContactImageDataKey as CNKeyDescriptor,
-            CNContactTypeKey as CNKeyDescriptor
-        ]
+        // Perform heavy operations on background thread
+        let (allContacts, vCardData) = try await Task.detached { [weak self] () -> ([CNContact], Data) in
+            guard let self = self else {
+                throw BackupError.importFailed
+            }
 
-        var allContacts: [CNContact] = []
-        let fetchRequest = CNContactFetchRequest(keysToFetch: keysToFetch)
+            // Fetch all contacts
+            let keysToFetch: [CNKeyDescriptor] = [
+                CNContactGivenNameKey as CNKeyDescriptor,
+                CNContactFamilyNameKey as CNKeyDescriptor,
+                CNContactPhoneNumbersKey as CNKeyDescriptor,
+                CNContactEmailAddressesKey as CNKeyDescriptor,
+                CNContactPostalAddressesKey as CNKeyDescriptor,
+                CNContactOrganizationNameKey as CNKeyDescriptor,
+                CNContactBirthdayKey as CNKeyDescriptor,
+                CNContactImageDataAvailableKey as CNKeyDescriptor,
+                CNContactImageDataKey as CNKeyDescriptor,
+                CNContactTypeKey as CNKeyDescriptor
+            ]
 
-        try contactStore.enumerateContacts(with: fetchRequest) { contact, _ in
-            allContacts.append(contact)
-        }
+            var allContacts: [CNContact] = []
+            let fetchRequest = CNContactFetchRequest(keysToFetch: keysToFetch)
 
-        print("📇 [ContactsBackup] Fetched \(allContacts.count) contacts")
+            try self.contactStore.enumerateContacts(with: fetchRequest) { contact, _ in
+                allContacts.append(contact)
+            }
 
-        // Convert to vCard format
-        let vCardData = try CNContactVCardSerialization.data(with: allContacts)
+            print("📇 [ContactsBackup] Fetched \(allContacts.count) contacts")
+
+            // Convert to vCard format
+            let vCardData = try CNContactVCardSerialization.data(with: allContacts)
+
+            return (allContacts, vCardData)
+        }.value
 
         // Create backup file
         let backupId = UUID()
@@ -180,40 +189,49 @@ final class ContactsBackupManager {
             throw BackupError.unauthorized
         }
 
-        // Read backup file
-        let fileURL = backupDirectoryURL.appendingPathComponent(backup.fileName)
-        guard fileManager.fileExists(atPath: fileURL.path) else {
-            throw BackupError.backupFileNotFound
-        }
+        // Perform heavy operations on background thread
+        try await Task.detached { [weak self] in
+            guard let self = self else {
+                throw BackupError.importFailed
+            }
 
-        let vCardData = try Data(contentsOf: fileURL)
-        let contacts = try CNContactVCardSerialization.contacts(with: vCardData)
+            // Read backup file
+            let fileURL = self.backupDirectoryURL.appendingPathComponent(backup.fileName)
+            guard self.fileManager.fileExists(atPath: fileURL.path) else {
+                throw BackupError.backupFileNotFound
+            }
 
-        print("📇 [ContactsBackup] Loaded \(contacts.count) contacts from backup")
+            let vCardData = try Data(contentsOf: fileURL)
+            let contacts = try CNContactVCardSerialization.contacts(with: vCardData)
 
-        if mode == .replace {
-            // Delete all existing contacts
-            try await deleteAllContacts()
-            print("🗑️ [ContactsBackup] Deleted all existing contacts")
-        }
+            print("📇 [ContactsBackup] Loaded \(contacts.count) contacts from backup")
 
-        // Import contacts
-        let saveRequest = CNSaveRequest()
+            if mode == .replace {
+                // Delete all existing contacts
+                try await self.deleteAllContacts()
+                print("🗑️ [ContactsBackup] Deleted all existing contacts")
+            }
 
-        for contact in contacts {
-            let mutableContact = contact.mutableCopy() as! CNMutableContact
-            saveRequest.add(mutableContact, toContainerWithIdentifier: nil)
-        }
+            // Import contacts
+            let saveRequest = CNSaveRequest()
 
-        try contactStore.execute(saveRequest)
+            for contact in contacts {
+                let mutableContact = contact.mutableCopy() as! CNMutableContact
+                saveRequest.add(mutableContact, toContainerWithIdentifier: nil)
+            }
 
-        print("✅ [ContactsBackup] Restore completed - \(contacts.count) contacts")
+            try self.contactStore.execute(saveRequest)
 
-        // Track in analytics
-        AnalyticsManager.shared.logEvent("contacts_backup_restored", parameters: [
-            "contact_count": contacts.count,
-            "mode": mode == .merge ? "merge" : "replace"
-        ])
+            print("✅ [ContactsBackup] Restore completed - \(contacts.count) contacts")
+
+            // Track in analytics
+            await MainActor.run {
+                AnalyticsManager.shared.logEvent("contacts_backup_restored", parameters: [
+                    "contact_count": contacts.count,
+                    "mode": mode == .merge ? "merge" : "replace"
+                ])
+            }
+        }.value
     }
 
     private func deleteAllContacts() async throws {
