@@ -663,20 +663,58 @@ struct DashboardView: View {
     private func handleContactsCardTap(results: ScanCoordinator.ScanResults) {
         let contactsAuth = ContactsCleaner.shared.checkAuthorizationStatus()
 
-        if contactsAuth != .authorized {
+        switch contactsAuth {
+        case .notDetermined:
+            // Request permission directly - show system dialog
+            Task {
+                let granted = await ContactsCleaner.shared.requestAuthorization()
+                await MainActor.run {
+                    if granted {
+                        // Permission granted, rescan to get contacts data
+                        scanCoordinator.startScan()
+                    } else {
+                        // User denied, show settings alert
+                        showingContactsPermissionAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            // Already denied, must go to Settings
             showingContactsPermissionAlert = true
-        } else if let contactsResults = results.contactsResults, contactsResults.totalDuplicates > 0 {
-            showingSmartAlbums = true
+        case .authorized:
+            // Permission granted, show results
+            if let contactsResults = results.contactsResults, contactsResults.totalDuplicates > 0 {
+                showingSmartAlbums = true
+            }
         }
     }
 
     private func handleCalendarCardTap(results: ScanCoordinator.ScanResults) {
         let calendarAuth = CalendarCleaner.shared.checkAuthorizationStatus(for: .event)
 
-        if calendarAuth != .authorized {
+        switch calendarAuth {
+        case .notDetermined:
+            // Request permission directly - show system dialog
+            Task {
+                let granted = await CalendarCleaner.shared.requestAuthorization(for: .event)
+                await MainActor.run {
+                    if granted {
+                        // Permission granted, rescan to get calendar data
+                        scanCoordinator.startScan()
+                    } else {
+                        // User denied, show settings alert
+                        showingCalendarPermissionAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            // Already denied, must go to Settings
             showingCalendarPermissionAlert = true
-        } else if let calendarResults = results.calendarResults, calendarResults.totalCleanableEvents > 0 {
-            showingSmartAlbums = true
+        case .authorized:
+            // Permission granted, show results
+            if let calendarResults = results.calendarResults, calendarResults.totalCleanableEvents > 0 {
+                showingSmartAlbums = true
+            }
         }
     }
 
