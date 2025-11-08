@@ -42,6 +42,10 @@ public class ActivityLog: NSManagedObject {
             return formatBytes(Int64(freedBytes))
         case .optimizationCompleted:
             return "\(count) photos"
+        case .calendarCleaned:
+            return "\(count) items"
+        case .contactsCleaned:
+            return "\(count) contacts"
         case .none:
             return "\(count) items"
         }
