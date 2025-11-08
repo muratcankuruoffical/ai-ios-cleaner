@@ -310,52 +310,6 @@ struct PhotoGridView: View {
     }
 }
 
-// MARK: - Photo Thumbnail
-
-struct PhotoThumbnailView: View {
-    let asset: PHAsset
-    @State private var image: UIImage?
-
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                if let image = image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
-                } else {
-                    Rectangle()
-                        .fill(CleanerTheme.cardBackground)
-                        .overlay(
-                            ProgressView()
-                                .tint(CleanerTheme.textSecondary)
-                        )
-                }
-            }
-        }
-        .onAppear {
-            loadImage()
-        }
-    }
-
-    private func loadImage() {
-        let options = PHImageRequestOptions()
-        options.deliveryMode = .opportunistic
-        options.isNetworkAccessAllowed = true
-
-        PHImageManager.default().requestImage(
-            for: asset,
-            targetSize: CGSize(width: 200, height: 200),
-            contentMode: .aspectFill,
-            options: options
-        ) { image, _ in
-            self.image = image
-        }
-    }
-}
-
 // MARK: - Preview
 
 #Preview {
