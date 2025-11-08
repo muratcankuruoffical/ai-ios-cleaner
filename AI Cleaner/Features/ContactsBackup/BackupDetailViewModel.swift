@@ -54,6 +54,7 @@ class BackupDetailViewModel: ObservableObject {
     @Published var showingError = false
     @Published var showingSuccess = false
     @Published var lastError: String?
+    @Published var restoredContactCount: Int = 0
 
     private let backup: ContactBackup
     private let backupManager = ContactsBackupManager.shared
@@ -194,6 +195,8 @@ class BackupDetailViewModel: ObservableObject {
                 }
             }.value
 
+            // Save count before clearing selection
+            restoredContactCount = selectedContacts.count
             showingSuccess = true
             selectedContactIds.removeAll()
 

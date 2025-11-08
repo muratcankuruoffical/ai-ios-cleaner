@@ -78,7 +78,7 @@ struct BackupDetailView: View {
                 dismiss()
             }
         } message: {
-            Text("\(viewModel.selectedContactIds.count) contact(s) restored successfully!")
+            Text("\(viewModel.restoredContactCount) contact(s) restored successfully!")
         }
     }
 
