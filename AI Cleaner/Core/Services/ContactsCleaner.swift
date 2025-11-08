@@ -100,7 +100,6 @@ final class ContactsCleaner {
             if !contact.postalAddresses.isEmpty { score += 5 }
             if ((contact.birthday?.description.isEmpty) == nil) ?? false { score += 5 }
             if !contact.organizationName.isEmpty { score += 3 }
-            if !contact.note.isEmpty { score += 2 }
             if contact.imageDataAvailable { score += 5 }
             return score
         }
@@ -126,7 +125,6 @@ final class ContactsCleaner {
                 CNContactPostalAddressesKey as CNKeyDescriptor,
                 CNContactOrganizationNameKey as CNKeyDescriptor,
                 CNContactBirthdayKey as CNKeyDescriptor,
-                CNContactNoteKey as CNKeyDescriptor,
                 CNContactImageDataAvailableKey as CNKeyDescriptor
             ]
 

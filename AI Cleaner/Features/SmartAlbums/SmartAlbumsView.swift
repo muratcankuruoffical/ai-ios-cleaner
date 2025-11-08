@@ -67,6 +67,28 @@ struct SmartAlbumsView: View {
         scanResults.documents.filter { !scanCoordinator.deletedAssetIds.contains($0.asset.localIdentifier) }
     }
 
+    private var filteredCalendarEventsCount: Int {
+        guard let calendarResults = scanResults.calendarResults else { return 0 }
+
+        let pastEventsCount = calendarResults.pastEvents.filter { !scanCoordinator.deletedEventIds.contains($0.eventIdentifier) }.count
+        let declinedEventsCount = calendarResults.declinedEvents.filter { !scanCoordinator.deletedEventIds.contains($0.eventIdentifier) }.count
+        let completedRemindersCount = calendarResults.completedReminders.filter { !scanCoordinator.deletedEventIds.contains($0.calendarItemIdentifier) }.count
+
+        return pastEventsCount + declinedEventsCount + completedRemindersCount
+    }
+
+    private var filteredContactsCount: Int {
+        guard let contactsResults = scanResults.contactsResults else { return 0 }
+
+        // Count duplicates that haven't been deleted
+        var count = 0
+        for group in contactsResults.duplicateGroups {
+            let remainingDuplicates = group.duplicates.filter { !scanCoordinator.deletedContactIds.contains($0.identifier) }
+            count += remainingDuplicates.count
+        }
+        return count
+    }
+
     private var totalDuplicatesCount: Int {
         filteredSimilarGroups.reduce(0) { $0 + $1.assets.count }
     }
@@ -170,11 +192,10 @@ struct SmartAlbumsView: View {
                     }
                 }
 
-                if let contactsResults = scanResults.contactsResults,
-                   contactsResults.totalDuplicates > 0 {
+                if filteredContactsCount > 0 {
                     AlbumRow(
                         type: .contacts,
-                        count: contactsResults.totalDuplicates,
+                        count: filteredContactsCount,
                         icon: "person.2.fill",
                         color: .brown
                     )
@@ -183,11 +204,10 @@ struct SmartAlbumsView: View {
                     }
                 }
 
-                if let calendarResults = scanResults.calendarResults,
-                   calendarResults.totalCleanableEvents > 0 {
+                if filteredCalendarEventsCount > 0 {
                     AlbumRow(
                         type: .calendar,
-                        count: calendarResults.totalCleanableEvents,
+                        count: filteredCalendarEventsCount,
                         icon: "calendar.badge.clock",
                         color: .teal
                     )

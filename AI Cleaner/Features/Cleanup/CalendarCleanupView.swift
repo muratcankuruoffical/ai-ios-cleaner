@@ -33,6 +33,10 @@ struct CalendarCleanupView: View {
         results.completedReminders.filter { !deletedReminderIds.contains($0.calendarItemIdentifier) }
     }
 
+    var totalAvailableItems: Int {
+        availablePastEvents.count + availableDeclinedEvents.count + availableReminders.count
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header Stats
@@ -95,7 +99,7 @@ struct CalendarCleanupView: View {
                     .foregroundColor(.teal)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(results.totalCleanableEvents + results.totalCleanableReminders) Items")
+                    Text("\(totalAvailableItems) Items")
                         .font(.title2)
                         .fontWeight(.bold)
 
@@ -296,6 +300,7 @@ struct CalendarCleanupView: View {
                 try CalendarCleaner.shared.deleteEvents([event])
                 await MainActor.run {
                     deletedEventIds.insert(event.eventIdentifier)
+                    scanCoordinator.markEventsAsDeleted([event.eventIdentifier])
                     isDeleting = false
 
                     // Log activity to CoreData
@@ -325,6 +330,7 @@ struct CalendarCleanupView: View {
                 try CalendarCleaner.shared.deleteReminders([reminder])
                 await MainActor.run {
                     deletedReminderIds.insert(reminder.calendarItemIdentifier)
+                    scanCoordinator.markEventsAsDeleted([reminder.calendarItemIdentifier])
                     isDeleting = false
 
                     // Log activity to CoreData

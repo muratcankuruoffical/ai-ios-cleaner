@@ -25,6 +25,15 @@ struct ContactsCleanupView: View {
         }
     }
 
+    var totalAvailableDuplicates: Int {
+        var count = 0
+        for group in availableGroups {
+            let remainingDuplicates = group.duplicates.filter { !scanCoordinator.deletedContactIds.contains($0.identifier) }
+            count += remainingDuplicates.count
+        }
+        return count
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -68,11 +77,11 @@ struct ContactsCleanupView: View {
                     .foregroundColor(.brown)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(results.totalDuplicates) Duplicates")
+                    Text("\(totalAvailableDuplicates) Duplicates")
                         .font(.title2)
                         .fontWeight(.bold)
 
-                    Text("Found in \(results.duplicateGroups.count) groups")
+                    Text("Found in \(availableGroups.count) groups")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -183,6 +192,8 @@ struct ContactsCleanupView: View {
 
                 await MainActor.run {
                     processedGroupIds.insert(group.contacts.first?.identifier ?? "")
+                    let deletedIds = group.duplicates.map { $0.identifier }
+                    scanCoordinator.markContactsAsDeleted(deletedIds)
                     isProcessing = false
                     selectedGroup = nil
 
@@ -213,6 +224,8 @@ struct ContactsCleanupView: View {
 
                 await MainActor.run {
                     processedGroupIds.insert(group.contacts.first?.identifier ?? "")
+                    let deletedIds = group.duplicates.map { $0.identifier }
+                    scanCoordinator.markContactsAsDeleted(deletedIds)
                     isProcessing = false
                     selectedGroup = nil
 

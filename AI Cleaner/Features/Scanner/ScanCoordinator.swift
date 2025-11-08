@@ -20,6 +20,8 @@ class ScanCoordinator: ObservableObject {
     @Published var progress: ScanProgress = ScanProgress()
     @Published var scanResults: ScanResults?
     @Published var deletedAssetIds: Set<String> = [] // Track deleted photos for real-time updates
+    @Published var deletedEventIds: Set<String> = [] // Track deleted calendar events
+    @Published var deletedContactIds: Set<String> = [] // Track deleted contacts
 
     // MARK: - Services
 
@@ -228,6 +230,22 @@ class ScanCoordinator: ObservableObject {
     func resetDeletedAssets() {
         print("🔄 [ScanCoordinator] Resetting deleted assets tracking")
         deletedAssetIds.removeAll()
+        deletedEventIds.removeAll()
+        deletedContactIds.removeAll()
+    }
+
+    /// Mark calendar events as deleted to update UI counts in real-time
+    func markEventsAsDeleted(_ eventIds: [String]) {
+        print("🗑️ [ScanCoordinator] Marking \(eventIds.count) events as deleted")
+        deletedEventIds.formUnion(eventIds)
+        print("🗑️ [ScanCoordinator] Total deleted events: \(deletedEventIds.count)")
+    }
+
+    /// Mark contacts as deleted to update UI counts in real-time
+    func markContactsAsDeleted(_ contactIds: [String]) {
+        print("🗑️ [ScanCoordinator] Marking \(contactIds.count) contacts as deleted")
+        deletedContactIds.formUnion(contactIds)
+        print("🗑️ [ScanCoordinator] Total deleted contacts: \(deletedContactIds.count)")
     }
 
     // MARK: - Main Scan Logic
