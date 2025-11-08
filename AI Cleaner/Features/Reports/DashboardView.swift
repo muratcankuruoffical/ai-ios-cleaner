@@ -369,7 +369,7 @@ struct DashboardView: View {
             Button(action: {
                 showingSmartAlbums = true
             }) {
-                Text("View Smart Albums")
+                Text("View Scan Results")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)

@@ -219,7 +219,7 @@ struct SmartAlbumsView: View {
                 }
             }
         }
-        .navigationTitle("Smart Albums")
+        .navigationTitle("Scan Results")
         .sheet(item: $selectedAlbum) { albumType in
             NavigationView {
                 albumDetailView(for: albumType)
