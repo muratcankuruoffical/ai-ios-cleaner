@@ -26,19 +26,24 @@ class AIPhotoSearchViewModel: ObservableObject {
     // MARK: - Initialization
 
     func initializeIfNeeded() {
-        // Check if we need to index photos
-        let indexedCount = getIndexedPhotoCount()
-        let totalCount = getTotalPhotoCount()
+        Task {
+            // Check if we need to index photos
+            let indexedCount = getIndexedPhotoCount()
+            let totalCount = getTotalPhotoCount()
 
-        print("📊 [AIPhotoSearch] Indexed: \(indexedCount), Total: \(totalCount)")
+            totalPhotos = totalCount
 
-        // If less than 50% indexed or no photos indexed, start indexing
-        if indexedCount == 0 || (indexedCount < totalCount / 2) {
-            Task {
+            print("📊 [AIPhotoSearch] Indexed: \(indexedCount), Total: \(totalCount)")
+
+            // If less than 50% indexed or no photos indexed, start indexing
+            if indexedCount == 0 || (indexedCount < totalCount / 2) {
+                print("🏗️ [AIPhotoSearch] Starting automatic indexing...")
                 await startIndexing()
+            } else {
+                print("✅ [AIPhotoSearch] Photos already indexed")
+                hasIndexed = true
+                indexingProgress = totalCount
             }
-        } else {
-            hasIndexed = true
         }
     }
 
@@ -76,12 +81,19 @@ class AIPhotoSearchViewModel: ObservableObject {
         hasSearched = false
     }
 
+    func forceReindex() {
+        Task {
+            print("🔄 [AIPhotoSearch] Force re-indexing all photos...")
+            await startIndexing(force: true)
+        }
+    }
+
     // MARK: - Indexing
 
-    private func startIndexing() async {
+    private func startIndexing(force: Bool = false) async {
         guard !isIndexing else { return }
 
-        print("🏗️ [AIPhotoSearch] Starting photo indexing...")
+        print("🏗️ [AIPhotoSearch] Starting photo indexing (force: \(force))...")
 
         isIndexing = true
         indexingProgress = 0
@@ -93,35 +105,54 @@ class AIPhotoSearchViewModel: ObservableObject {
 
         totalPhotos = allPhotos.count
 
-        // Get already indexed asset IDs
-        let indexedAssetIds = getIndexedAssetIds()
-
-        print("📊 [AIPhotoSearch] Total photos: \(totalPhotos), Already indexed: \(indexedAssetIds.count)")
-
-        // Convert to array and filter out already indexed photos
         var photosToIndex: [PHAsset] = []
-        allPhotos.enumerateObjects { asset, _, _ in
-            if !indexedAssetIds.contains(asset.localIdentifier) {
+
+        if force {
+            // Re-index all photos
+            allPhotos.enumerateObjects { asset, _, _ in
                 photosToIndex.append(asset)
+            }
+            print("📊 [AIPhotoSearch] Force re-indexing all \(totalPhotos) photos")
+        } else {
+            // Get already indexed asset IDs
+            let indexedAssetIds = getIndexedAssetIds()
+            print("📊 [AIPhotoSearch] Total photos: \(totalPhotos), Already indexed: \(indexedAssetIds.count)")
+
+            // Convert to array and filter out already indexed photos
+            allPhotos.enumerateObjects { asset, _, _ in
+                if !indexedAssetIds.contains(asset.localIdentifier) {
+                    photosToIndex.append(asset)
+                }
             }
         }
 
         print("📊 [AIPhotoSearch] Photos to index: \(photosToIndex.count)")
 
-        // Process in batches of 20
-        let batchSize = 20
+        guard !photosToIndex.isEmpty else {
+            print("✅ [AIPhotoSearch] No photos to index")
+            isIndexing = false
+            hasIndexed = true
+            indexingProgress = totalPhotos
+            return
+        }
+
+        // Process in batches of 10 (reduced for stability)
+        let batchSize = 10
         let batches = stride(from: 0, to: photosToIndex.count, by: batchSize).map {
             Array(photosToIndex[$0..<min($0 + batchSize, photosToIndex.count)])
         }
 
-        for batch in batches {
+        print("📊 [AIPhotoSearch] Processing \(batches.count) batches of \(batchSize)")
+
+        for (index, batch) in batches.enumerated() {
+            print("📦 [AIPhotoSearch] Processing batch \(index + 1)/\(batches.count)")
             await processBatch(batch)
         }
 
         isIndexing = false
         hasIndexed = true
 
-        print("✅ [AIPhotoSearch] Indexing completed!")
+        print("✅ [AIPhotoSearch] Indexing completed! Total indexed: \(indexingProgress)")
     }
 
     private func processBatch(_ assets: [PHAsset]) async {

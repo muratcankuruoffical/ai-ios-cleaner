@@ -68,7 +68,22 @@ public class SceneTag: NSManagedObject {
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "confidence", ascending: false)]
 
         let tags = (try? context.fetch(fetchRequest)) ?? []
-        return tags.map { $0.assetId ?? "" }.filter { !$0.isEmpty }
+
+        print("🔍 [SceneTag] Searching for label '\(label)' with confidence >= \(minConfidence)")
+        print("   Found \(tags.count) tags")
+
+        if !tags.isEmpty {
+            // Show top 3 matches for debugging
+            for tag in tags.prefix(3) {
+                print("   - Asset: \(tag.assetId ?? "nil"), Label: \(tag.label ?? "nil"), Confidence: \(tag.confidence)")
+            }
+        }
+
+        let assetIds = tags.map { $0.assetId ?? "" }.filter { !$0.isEmpty }
+        let uniqueAssetIds = Array(Set(assetIds))
+        print("   Unique assets: \(uniqueAssetIds.count)")
+
+        return uniqueAssetIds
     }
 
     static func deleteAllTags(context: NSManagedObjectContext) {

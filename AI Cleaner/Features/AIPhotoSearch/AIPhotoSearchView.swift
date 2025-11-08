@@ -89,15 +89,32 @@ struct AIPhotoSearchView: View {
 
                 Spacer()
 
-                if viewModel.isIndexing {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                            .tint(CleanerTheme.primary)
-                            .scaleEffect(0.8)
+                VStack(alignment: .trailing, spacing: 4) {
+                    if viewModel.isIndexing {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .tint(CleanerTheme.primary)
+                                .scaleEffect(0.8)
 
-                        Text("Indexing \(viewModel.indexingProgress)/\(viewModel.totalPhotos)")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(CleanerTheme.textSecondary)
+                            Text("Indexing \(viewModel.indexingProgress)/\(viewModel.totalPhotos)")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(CleanerTheme.textSecondary)
+                        }
+                    } else if viewModel.totalPhotos > 0 {
+                        Text("\(viewModel.indexingProgress) indexed")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(CleanerTheme.accentGreen)
+
+                        Button(action: {
+                            viewModel.forceReindex()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.clockwise")
+                                Text("Re-index")
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(CleanerTheme.primary)
+                        }
                     }
                 }
             }

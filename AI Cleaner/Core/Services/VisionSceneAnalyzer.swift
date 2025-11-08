@@ -20,13 +20,19 @@ final class VisionSceneAnalyzer {
 
     /// Analyze a single photo and extract scene tags
     func analyzePhoto(_ asset: PHAsset) async throws -> [SceneLabel] {
+        print("🔍 [VisionAnalyzer] Starting analysis for asset: \(asset.localIdentifier)")
+
         // Get image from asset
         guard let image = await fetchImage(for: asset) else {
+            print("❌ [VisionAnalyzer] Failed to fetch image for asset: \(asset.localIdentifier)")
             throw AnalysisError.failedToFetchImage
         }
 
+        print("✅ [VisionAnalyzer] Image fetched - Size: \(image.size)")
+
         // Convert to CGImage
         guard let cgImage = image.cgImage else {
+            print("❌ [VisionAnalyzer] Failed to convert to CGImage")
             throw AnalysisError.invalidImage
         }
 
@@ -34,7 +40,10 @@ final class VisionSceneAnalyzer {
         let labels = try await performSceneClassification(on: cgImage)
 
         print("🔍 [VisionAnalyzer] Analyzed asset \(asset.localIdentifier)")
-        print("   Found \(labels.count) scene labels")
+        print("   Found \(labels.count) scene labels:")
+        for label in labels.prefix(5) {
+            print("   - \(label.identifier): \(String(format: "%.2f", label.confidence))")
+        }
 
         return labels
     }
@@ -146,12 +155,19 @@ final class VisionSceneAnalyzer {
         minConfidence: Float = 0.4,
         context: NSManagedObjectContext
     ) -> [String] {
+        print("🔍 [VisionAnalyzer] Searching for: '\(query)' (min confidence: \(minConfidence))")
+
         // Split query into keywords
         let keywords = query.lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
 
-        guard !keywords.isEmpty else { return [] }
+        print("🔍 [VisionAnalyzer] Keywords: \(keywords)")
+
+        guard !keywords.isEmpty else {
+            print("⚠️ [VisionAnalyzer] No keywords found")
+            return []
+        }
 
         var matchingAssetIds = Set<String>()
 
@@ -162,8 +178,11 @@ final class VisionSceneAnalyzer {
                 minConfidence: minConfidence,
                 context: context
             )
+            print("🔍 [VisionAnalyzer] Keyword '\(keyword)': \(assetIds.count) matches")
             matchingAssetIds.formUnion(assetIds)
         }
+
+        print("✅ [VisionAnalyzer] Total matches: \(matchingAssetIds.count)")
 
         return Array(matchingAssetIds)
     }
