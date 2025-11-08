@@ -237,6 +237,7 @@ struct SmartAlbumsView: View {
                 .environmentObject(scanCoordinator)
         case .optimizable:
             PhotoOptimizationView(photos: filteredOptimizablePhotos)
+                .environmentObject(scanCoordinator)
         case .documents:
             DocumentsListView(documents: filteredDocuments)
         case .contacts:
@@ -794,6 +795,7 @@ extension VideoAnalyzer.SimilarVideoGroup: Identifiable {
 
 struct PhotoOptimizationView: View {
     let photos: [PhotoOptimizer.OptimizablePhoto]
+    @EnvironmentObject var scanCoordinator: ScanCoordinator
     @State private var isOptimizing = false
     @State private var optimizationProgress: Double = 0
     @State private var currentIndex = 0
@@ -894,6 +896,8 @@ struct PhotoOptimizationView: View {
         results = []
 
         Task {
+            print("🎨 [PhotoOptimization] Starting optimization - count: \(photos.count), deleteOriginals: \(deleteOriginals)")
+
             _ = await PhotoOptimizer.shared.optimizePhotos(
                 photos: photos,
                 configuration: .preset1080p,
@@ -907,9 +911,34 @@ struct PhotoOptimizationView: View {
                 }
             )
 
-            _ = await MainActor.run {
+            await MainActor.run {
+                print("🎨 [PhotoOptimization] Optimization complete")
                 isOptimizing = false
                 showResults = true
+
+                // Track deleted/optimized assets
+                if deleteOriginals {
+                    // Original photos were deleted, track them
+                    let deletedAssets = photos.map { $0.asset }
+                    scanCoordinator.markAssetsAsDeleted(deletedAssets)
+                    print("🎨 [PhotoOptimization] Marked \(deletedAssets.count) assets as deleted")
+                }
+
+                // Calculate total space saved
+                let totalSaved = results.reduce(0) { $0 + $1.spaceSaved }
+                print("🎨 [PhotoOptimization] Total space saved: \(totalSaved) bytes")
+
+                // Log activity to CoreData
+                let context = CoreDataStack.shared.viewContext
+                ActivityLog.createOptimizationActivity(
+                    context: context,
+                    count: photos.count,
+                    freedBytes: totalSaved,
+                    deletedOriginals: deleteOriginals,
+                    timestamp: Date()
+                )
+                CoreDataStack.shared.save(context: context)
+                print("🎨 [PhotoOptimization] ActivityLog created and saved")
             }
         }
     }

@@ -50,11 +50,19 @@ public class ActivityLog: NSManagedObject {
         case .scanCompleted:
             return "Scan completed"
         case .photosDeleted:
-            return "Deleted \(itemCount) photos"
+            // Use category to differentiate between photos and videos
+            if let category = category {
+                if category.lowercased().contains("video") {
+                    return "Deleted \(itemCount) video\(itemCount == 1 ? "" : "s")"
+                } else {
+                    return "Deleted \(itemCount) photo\(itemCount == 1 ? "" : "s")"
+                }
+            }
+            return "Deleted \(itemCount) item\(itemCount == 1 ? "" : "s")"
         case .cacheCleared:
             return "Cache cleared"
         case .optimizationCompleted:
-            return "Optimized \(itemCount) photos"
+            return "Optimized \(itemCount) photo\(itemCount == 1 ? "" : "s")"
         case .none:
             return "Activity completed"
         }
@@ -127,6 +135,26 @@ public class ActivityLog: NSManagedObject {
         activity.category = category
         activity.timestamp = timestamp
         print("📊 [ActivityLog] Delete activity created - ID: \(activity.id?.uuidString ?? "nil")")
+        return activity
+    }
+
+    @discardableResult
+    static func createOptimizationActivity(
+        context: NSManagedObjectContext,
+        count: Int,
+        freedBytes: Int64,
+        deletedOriginals: Bool,
+        timestamp: Date = Date()
+    ) -> ActivityLog {
+        print("📊 [ActivityLog] Creating optimization activity - count: \(count), bytes: \(freedBytes), deletedOriginals: \(deletedOriginals)")
+        let activity = ActivityLog(context: context)
+        activity.id = UUID()
+        activity.type = ActivityType.optimizationCompleted.rawValue
+        activity.itemCount = Int32(count)
+        activity.freedBytes = freedBytes
+        activity.category = deletedOriginals ? "Optimized (originals deleted)" : "Optimized (originals kept)"
+        activity.timestamp = timestamp
+        print("📊 [ActivityLog] Optimization activity created - ID: \(activity.id?.uuidString ?? "nil")")
         return activity
     }
 
