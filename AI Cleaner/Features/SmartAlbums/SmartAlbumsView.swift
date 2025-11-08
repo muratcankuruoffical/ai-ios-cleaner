@@ -7,6 +7,8 @@
 
 import SwiftUI
 import Photos
+import EventKit
+import Contacts
 
 struct SmartAlbumsView: View {
     let scanResults: ScanCoordinator.ScanResults
