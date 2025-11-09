@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Photos
+internal import Photos
 import UIKit
 
 final class SimplePhotoSearchService {

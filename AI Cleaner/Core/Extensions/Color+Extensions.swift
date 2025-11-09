@@ -18,7 +18,7 @@ enum CleanerTheme {
     // MARK: - Background Colors
     static let background = Color(hex: "#0F0D1C")     // Dark Gray Background
     static let surface = Color(hex: "#212126")        // Secondary Gray Surface
-    static let cardBackground = Color(hex: "#595B72") // Gray Cards/Containers
+    static let cardBackground = Color(hex: "#2A2B35") // Darker Gray Cards/Containers (reduced opacity for better dark theme)
 
     // MARK: - Text Colors
     static let textPrimary = Color.white              // White Text

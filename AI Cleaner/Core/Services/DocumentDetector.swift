@@ -8,7 +8,7 @@
 import Foundation
 import Vision
 import UIKit
-import Photos
+internal import Photos
 
 final class DocumentDetector {
     static let shared = DocumentDetector()

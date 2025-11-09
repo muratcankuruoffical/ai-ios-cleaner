@@ -14,6 +14,8 @@ struct PaywallView: View {
     @State private var isPurchasing = false
     @State private var showingError = false
     @State private var errorMessage = ""
+    @State private var showingTerms = false
+    @State private var showingPrivacy = false
 
     enum PlanType {
         case monthly
@@ -73,33 +75,63 @@ struct PaywallView: View {
                     // Features
                     VStack(spacing: 16) {
                         FeatureItem(
-                            icon: "infinity",
-                            title: "Unlimited Scans",
-                            description: "Scan your library as many times as you want"
+                            icon: "magnifyingglass.circle.fill",
+                            title: "AI Photo Search",
+                            description: "Search photos using natural language"
                         )
 
                         FeatureItem(
-                            icon: "hand.tap",
-                            title: "Unlimited Swipes",
-                            description: "No daily limits on photo reviews"
+                            icon: "square.grid.3x3.topleft.filled",
+                            title: "Smart Albums",
+                            description: "Auto-categorized albums for quick access"
+                        )
+
+                        FeatureItem(
+                            icon: "photo.stack",
+                            title: "Smart Duplicate Detection",
+                            description: "AI finds true duplicates and similar photos"
                         )
 
                         FeatureItem(
                             icon: "film",
-                            title: "Large Video Finder",
-                            description: "Find and clean up large video files"
+                            title: "Video Management",
+                            description: "Find large and duplicate videos"
+                        )
+
+                        FeatureItem(
+                            icon: "doc.text.magnifyingglass",
+                            title: "Document Detection",
+                            description: "AI identifies IDs, receipts, and invoices"
+                        )
+
+                        FeatureItem(
+                            icon: "person.2.crop.square.stack",
+                            title: "Contact Backup",
+                            description: "Auto backup and restore your contacts"
+                        )
+
+                        FeatureItem(
+                            icon: "calendar.badge.clock",
+                            title: "Calendar Cleaner",
+                            description: "Remove old events and duplicates"
+                        )
+
+                        FeatureItem(
+                            icon: "arrow.down.circle",
+                            title: "Photo Optimization",
+                            description: "Reduce 4K photos to 1080p to save space"
                         )
 
                         FeatureItem(
                             icon: "chart.bar.fill",
                             title: "Detailed Reports",
-                            description: "Advanced analytics and insights"
+                            description: "Advanced analytics and storage insights"
                         )
 
                         FeatureItem(
                             icon: "sparkles",
                             title: "Priority Support",
-                            description: "Get help faster with priority support"
+                            description: "Get help faster with premium support"
                         )
                     }
                     .padding(20)
@@ -187,8 +219,12 @@ struct PaywallView: View {
 
                     // Terms
                     HStack(spacing: 16) {
-                        Button("Terms") { }
-                        Button("Privacy") { }
+                        Button("Terms") {
+                            showingTerms = true
+                        }
+                        Button("Privacy") {
+                            showingPrivacy = true
+                        }
                     }
                     .font(.caption2)
                     .foregroundColor(CleanerTheme.textSecondary)
@@ -201,6 +237,12 @@ struct PaywallView: View {
             Button("OK") { }
         } message: {
             Text(errorMessage)
+        }
+        .sheet(isPresented: $showingTerms) {
+            TermsOfServiceView()
+        }
+        .sheet(isPresented: $showingPrivacy) {
+            PaywallPrivacyView()
         }
     }
 

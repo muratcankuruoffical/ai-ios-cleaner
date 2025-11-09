@@ -7,7 +7,7 @@
 
 import Foundation
 import Vision
-import Photos
+internal import Photos
 import UIKit
 import CoreData
 
@@ -15,6 +15,125 @@ final class VisionSceneAnalyzer {
     static let shared = VisionSceneAnalyzer()
 
     private init() {}
+
+    // MARK: - Turkish-English Translation Dictionary
+
+    /// Translation dictionary for common search terms (Turkish → English)
+    private let turkishToEnglish: [String: [String]] = [
+        // Animals / Hayvanlar
+        "kedi": ["cat"],
+        "köpek": ["dog"],
+        "hayvan": ["animal", "pet"],
+        "kuş": ["bird"],
+        "at": ["horse"],
+
+        // Food / Yiyecek
+        "yemek": ["food", "meal", "dish"],
+        "içecek": ["drink", "beverage"],
+        "kahve": ["coffee"],
+        "çay": ["tea"],
+        "kahvaltı": ["breakfast"],
+        "akşam yemeği": ["dinner"],
+        "öğle yemeği": ["lunch"],
+        "pizza": ["pizza"],
+        "burger": ["burger", "hamburger"],
+        "tatlı": ["dessert", "sweet"],
+        "meyve": ["fruit"],
+        "sebze": ["vegetable"],
+
+        // Places / Yerler
+        "ev": ["home", "house", "indoor"],
+        "dışarı": ["outdoor", "outside"],
+        "plaj": ["beach", "coast"],
+        "deniz": ["sea", "ocean", "water"],
+        "dağ": ["mountain"],
+        "orman": ["forest", "woods"],
+        "park": ["park", "garden"],
+        "bina": ["building", "architecture"],
+        "sokak": ["street", "road"],
+        "şehir": ["city", "urban"],
+        "köy": ["village", "rural"],
+
+        // Activities / Aktiviteler
+        "spor": ["sport", "fitness", "gym", "exercise"],
+        "koşu": ["running", "jogging"],
+        "yüzme": ["swimming", "pool"],
+        "bisiklet": ["bicycle", "bike", "cycling"],
+        "futbol": ["football", "soccer"],
+        "basketbol": ["basketball"],
+        "dans": ["dance", "dancing"],
+        "yoga": ["yoga"],
+        "fitness": ["gym", "fitness", "workout"],
+        "jimnastik": ["gym", "gymnastics", "fitness"],
+
+        // Vehicles / Araçlar
+        "araba": ["car", "automobile", "vehicle"],
+        "otobüs": ["bus"],
+        "tren": ["train"],
+        "uçak": ["airplane", "aircraft"],
+        "motosiklet": ["motorcycle"],
+        "gemi": ["ship", "boat"],
+        "tekne": ["boat"],
+
+        // Nature / Doğa
+        "doğa": ["nature", "natural"],
+        "ağaç": ["tree"],
+        "çiçek": ["flower"],
+        "bitki": ["plant"],
+        "güneş": ["sun", "sunny"],
+        "yağmur": ["rain", "rainy"],
+        "kar": ["snow", "snowy"],
+        "gökyüzü": ["sky"],
+        "bulut": ["cloud"],
+        "göl": ["lake"],
+        "nehir": ["river"],
+
+        // People / İnsanlar
+        "insan": ["person", "people", "human"],
+        "kadın": ["woman", "female"],
+        "erkek": ["man", "male"],
+        "çocuk": ["child", "kid"],
+        "bebek": ["baby"],
+        "aile": ["family"],
+        "arkadaş": ["friend"],
+        "grup": ["group", "crowd"],
+        "kalabalık": ["crowd"],
+
+        // Events / Etkinlikler
+        "düğün": ["wedding"],
+        "parti": ["party"],
+        "konser": ["concert"],
+        "festival": ["festival"],
+        "toplantı": ["meeting"],
+        "doğum günü": ["birthday"],
+
+        // Technology / Teknoloji
+        "ekran görüntüsü": ["screenshot"],
+        "belge": ["document", "paper"],
+        "kimlik": ["id", "identity"],
+        "fatura": ["invoice", "bill"],
+        "makbuz": ["receipt"],
+
+        // Other / Diğer
+        "gece": ["night"],
+        "gündüz": ["day", "daytime"],
+        "sabah": ["morning"],
+        "akşam": ["evening", "sunset"],
+        "karanlık": ["dark", "darkness"],
+        "aydınlık": ["bright", "light"],
+        "rengarenk": ["colorful"],
+        "siyah beyaz": ["black white", "monochrome"],
+        "eski": ["old", "vintage"],
+        "yeni": ["new"],
+        "büyük": ["large", "big"],
+        "küçük": ["small"],
+        "yakın": ["close", "closeup"],
+        "uzak": ["distant", "far"],
+        "portre": ["portrait"],
+        "manzara": ["landscape", "scenery"],
+        "selfie": ["selfie"],
+        "panorama": ["panorama"],
+    ]
 
     // MARK: - Analysis
 
@@ -149,7 +268,7 @@ final class VisionSceneAnalyzer {
 
     // MARK: - Search
 
-    /// Search for assets matching a query
+    /// Search for assets matching a query (supports Turkish and English)
     func searchAssets(
         query: String,
         minConfidence: Float = 0.4,
@@ -158,28 +277,56 @@ final class VisionSceneAnalyzer {
         print("🔍 [VisionAnalyzer] Searching for: '\(query)' (min confidence: \(minConfidence))")
 
         // Split query into keywords
-        let keywords = query.lowercased()
+        let originalKeywords = query.lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
 
-        print("🔍 [VisionAnalyzer] Keywords: \(keywords)")
+        print("🔍 [VisionAnalyzer] Original keywords: \(originalKeywords)")
 
-        guard !keywords.isEmpty else {
+        guard !originalKeywords.isEmpty else {
             print("⚠️ [VisionAnalyzer] No keywords found")
             return []
         }
 
+        // Expand keywords with translations (Turkish → English)
+        var expandedKeywords: [String] = []
+
+        for keyword in originalKeywords {
+            // Add original keyword
+            expandedKeywords.append(keyword)
+
+            // Check if it's a Turkish word and add English translations
+            if let translations = turkishToEnglish[keyword] {
+                expandedKeywords.append(contentsOf: translations)
+                print("🌍 [VisionAnalyzer] Turkish '\(keyword)' → English: \(translations)")
+            }
+
+            // Also check for partial matches in Turkish dictionary
+            for (turkishWord, englishWords) in turkishToEnglish {
+                if turkishWord.contains(keyword) || keyword.contains(turkishWord) {
+                    expandedKeywords.append(contentsOf: englishWords)
+                    print("🌍 [VisionAnalyzer] Partial match '\(keyword)' with '\(turkishWord)' → \(englishWords)")
+                }
+            }
+        }
+
+        // Remove duplicates
+        let uniqueKeywords = Array(Set(expandedKeywords))
+        print("🔍 [VisionAnalyzer] Expanded keywords: \(uniqueKeywords)")
+
         var matchingAssetIds = Set<String>()
 
-        // Search for each keyword
-        for keyword in keywords {
+        // Search for each keyword (original + translations)
+        for keyword in uniqueKeywords {
             let assetIds = SceneTag.searchAssets(
                 byLabel: keyword,
                 minConfidence: minConfidence,
                 context: context
             )
-            print("🔍 [VisionAnalyzer] Keyword '\(keyword)': \(assetIds.count) matches")
-            matchingAssetIds.formUnion(assetIds)
+            if !assetIds.isEmpty {
+                print("🔍 [VisionAnalyzer] Keyword '\(keyword)': \(assetIds.count) matches")
+                matchingAssetIds.formUnion(assetIds)
+            }
         }
 
         print("✅ [VisionAnalyzer] Total matches: \(matchingAssetIds.count)")

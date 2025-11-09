@@ -10,55 +10,117 @@ internal import Combine
 
 struct ScanProgressView: View {
     @ObservedObject var coordinator: ScanCoordinator
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ZStack {
-            CleanerTheme.background
-                .ignoresSafeArea()
+        NavigationView {
+            ZStack {
+                CleanerTheme.background
+                    .ignoresSafeArea()
 
-            VStack(spacing: 32) {
-                Spacer()
+                VStack(spacing: 32) {
+                    Spacer()
 
-                // Animated Icon
-                ProgressRingView(progress: coordinator.progress.percentage)
+                    // Animated Icon
+                    ProgressRingView(progress: coordinator.progress.percentage)
 
-                VStack(spacing: 12) {
-                    Text(coordinator.progress.currentStep)
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(CleanerTheme.textPrimary)
+                    VStack(spacing: 12) {
+                        Text(coordinator.progress.currentStep)
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(CleanerTheme.textPrimary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
 
-                    Text("\(coordinator.progress.currentItemIndex) / \(coordinator.progress.totalItems)")
-                        .cleanerFont(.body)
+                        Text("\(coordinator.progress.currentItemIndex) / \(coordinator.progress.totalItems)")
+                            .cleanerFont(.body)
 
-                    if coordinator.progress.percentage > 0 {
-                        Text(String(format: "%.0f%% Complete", coordinator.progress.percentage * 100))
-                            .cleanerFont(.caption)
+                        if coordinator.progress.percentage > 0 {
+                            Text(String(format: "%.0f%% Complete", coordinator.progress.percentage * 100))
+                                .cleanerFont(.caption)
+                        }
+
+                        if let timeRemaining = coordinator.progress.timeRemaining, timeRemaining > 0 {
+                            Text("Estimated time: \(formatTimeRemaining(timeRemaining))")
+                                .cleanerFont(.caption)
+                                .foregroundColor(CleanerTheme.textSecondary)
+                        }
                     }
+
+                    ProgressView(value: coordinator.progress.percentage)
+                        .progressViewStyle(.linear)
+                        .tint(CleanerTheme.primary)
+                        .frame(maxWidth: 300)
+
+                    // Info text
+                    VStack(spacing: 8) {
+                        Text("Scan continues in background")
+                            .cleanerFont(.caption)
+                            .foregroundColor(CleanerTheme.textSecondary)
+                        Text("You can close this screen and come back later")
+                            .cleanerFont(.caption)
+                            .foregroundColor(CleanerTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+
+                    Spacer()
+
+                    // Buttons
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            coordinator.cancelScan()
+                        }) {
+                            Text("Cancel Scan")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(CleanerTheme.accentRed)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(CleanerTheme.accentRed.opacity(0.15))
+                                .cornerRadius(12)
+                        }
+
+                        Button(action: {
+                            dismiss()
+                        }) {
+                            Text("Close")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(CleanerTheme.primary)
+                                .padding(.horizontal, 32)
+                                .padding(.vertical, 12)
+                                .background(CleanerTheme.primary.opacity(0.15))
+                                .cornerRadius(12)
+                        }
+                    }
+                    .padding(.bottom, 32)
                 }
-
-                ProgressView(value: coordinator.progress.percentage)
-                    .progressViewStyle(.linear)
-                    .tint(CleanerTheme.primary)
-                    .frame(maxWidth: 300)
-
-                Spacer()
-
-                Button(action: {
-                    coordinator.cancelScan()
-                }) {
-                    Text("Cancel")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(CleanerTheme.accentRed)
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 12)
-                        .background(CleanerTheme.accentRed.opacity(0.15))
-                        .cornerRadius(12)
-                }
-                .padding(.bottom, 32)
+                .padding()
             }
-            .padding()
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Scanning...")
+                        .cleanerFont(.subtitle)
+                }
+            }
+            .preferredColorScheme(.dark)
         }
-        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Helper Methods
+
+    private func formatTimeRemaining(_ seconds: TimeInterval) -> String {
+        let totalSeconds = Int(seconds)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let secs = totalSeconds % 60
+
+        if hours > 0 {
+            return String(format: "%dh %dm", hours, minutes)
+        } else if minutes > 0 {
+            return String(format: "%dm %ds", minutes, secs)
+        } else {
+            return String(format: "%ds", secs)
+        }
     }
 }
 

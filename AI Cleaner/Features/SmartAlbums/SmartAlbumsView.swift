@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import Photos
+internal import Photos
 internal import EventKit
 import Contacts
 

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Photos
+internal import Photos
 import CoreData
 internal import Combine
 
@@ -23,13 +23,26 @@ class AIPhotoSearchViewModel: ObservableObject {
     private let context = CoreDataStack.shared.viewContext
     private var hasIndexed = false
 
+    var indexingProgressPercentage: Double {
+        guard totalPhotos > 0 else { return 0 }
+        return Double(indexingProgress) / Double(totalPhotos)
+    }
+
     // MARK: - Initialization
 
     func initializeIfNeeded() {
         #if targetEnvironment(simulator)
-        print("📱 [AIPhotoSearch] Running on simulator - Vision indexing disabled")
-        totalPhotos = getTotalPhotoCount()
-        hasIndexed = false
+        print("📱 [AIPhotoSearch] Running on simulator - Using mock indexing for UI testing")
+        Task {
+            totalPhotos = getTotalPhotoCount()
+
+            // Simulate indexing process on simulator (for UI testing only)
+            if totalPhotos > 0 {
+                await simulateIndexing()
+            } else {
+                hasIndexed = true
+            }
+        }
         #else
         Task {
             // Check if we need to index photos
@@ -52,6 +65,35 @@ class AIPhotoSearchViewModel: ObservableObject {
         }
         #endif
     }
+
+    // MARK: - Simulator Mock Indexing
+
+    #if targetEnvironment(simulator)
+    private func simulateIndexing() async {
+        print("🎭 [AIPhotoSearch] Starting mock indexing simulation...")
+        isIndexing = true
+        indexingProgress = 0
+
+        // Simulate indexing with progress updates
+        let batchSize = max(1, totalPhotos / 20) // 20 updates
+
+        for _ in 0..<20 {
+            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms delay
+            indexingProgress = min(indexingProgress + batchSize, totalPhotos)
+
+            if indexingProgress >= totalPhotos {
+                break
+            }
+        }
+
+        // Ensure we reach 100%
+        indexingProgress = totalPhotos
+        isIndexing = false
+        hasIndexed = true
+
+        print("✅ [AIPhotoSearch] Mock indexing completed!")
+    }
+    #endif
 
     // MARK: - Search
 

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Photos
+internal import Photos
 import CoreData
 import UIKit
 internal import Combine
@@ -36,11 +36,14 @@ class ScanCoordinator: ObservableObject {
     private let documentDetector = DocumentDetector.shared
     private let contactsCleaner = ContactsCleaner.shared
     private let calendarCleaner = CalendarCleaner.shared
+    private let stateManager = ScanStateManager.shared
 
     // MARK: - State
 
     private var scanTask: Task<Void, Never>?
     private var sessionId: UUID?
+    private var lastProgressUpdate: Date = .distantPast
+    private let progressThrottleInterval: TimeInterval = 0.5 // 500ms throttling (reduced from 100ms to prevent UI lag)
 
     // MARK: - Scan State
 
@@ -72,6 +75,19 @@ class ScanCoordinator: ObservableObject {
         var totalItems: Int = 0
         var percentage: Double = 0.0
         var timeRemaining: TimeInterval?
+        var startTime: Date?
+
+        mutating func updateTimeRemaining() {
+            guard let startTime = startTime, totalItems > 0, currentItemIndex > 0 else {
+                timeRemaining = nil
+                return
+            }
+
+            let elapsed = Date().timeIntervalSince(startTime)
+            let rate = Double(currentItemIndex) / elapsed
+            let remaining = Double(totalItems - currentItemIndex) / rate
+            timeRemaining = remaining
+        }
     }
 
     // MARK: - Scan Results
@@ -172,6 +188,7 @@ class ScanCoordinator: ObservableObject {
 
     func startScan() {
         guard scanState == .idle || scanState == .completed || scanState == .cancelled else {
+            print("⚠️ [ScanCoordinator] Scan already in progress")
             return
         }
 
@@ -179,6 +196,9 @@ class ScanCoordinator: ObservableObject {
         scanState = .scanning
         scanResults = nil
         resetDeletedAssets() // Clear deleted assets tracking for new scan
+
+        // Persist scan state
+        stateManager.startScan(sessionId: sessionId!)
 
         let startTime = Date()
         AnalyticsManager.shared.logScanStarted(photoCount: 0)
@@ -191,6 +211,7 @@ class ScanCoordinator: ObservableObject {
                 await MainActor.run {
                     scanResults = results
                     scanState = .completed
+                    stateManager.completeScan()
 
                     AnalyticsManager.shared.logScanCompleted(
                         photoCount: results.totalPhotos,
@@ -206,13 +227,36 @@ class ScanCoordinator: ObservableObject {
             } catch is CancellationError {
                 await MainActor.run {
                     scanState = .cancelled
+                    stateManager.cancelScan()
                 }
             } catch {
                 await MainActor.run {
                     scanState = .error(error)
+                    stateManager.cancelScan()
                     AnalyticsManager.shared.logError(error, context: "scan")
                 }
             }
+        }
+    }
+
+    // MARK: - Restore Scan
+
+    /// Restore scan progress if a scan was running when app was closed
+    func restoreScanIfNeeded() {
+        guard stateManager.isScanning else { return }
+
+        print("🔄 [ScanCoordinator] Restoring previous scan session...")
+
+        // Restore progress state
+        if let sessionId = stateManager.sessionId {
+            self.sessionId = sessionId
+            self.scanState = .scanning
+            self.progress.currentStep = stateManager.currentStep
+            self.progress.currentItemIndex = stateManager.currentIndex
+            self.progress.totalItems = stateManager.totalItems
+            self.progress.percentage = stateManager.percentage
+
+            print("🔄 [ScanCoordinator] Restored scan at \(Int(stateManager.percentage * 100))%")
         }
     }
 
@@ -268,54 +312,86 @@ class ScanCoordinator: ObservableObject {
 
         try Task.checkCancellation()
 
-        // Step 2: Process images
+        // Step 2: Process images with BATCH PROCESSING for better performance
         updateProgress(step: "Analyzing photos...", current: 0, total: totalPhotos)
 
         var assetsWithVectors: [SimilarityService.AssetWithVector] = []
         var failedCount = 0
         var failedAssets: [(PHAsset, Error)] = []
 
-        for i in 0..<totalPhotos {
-            let asset = imageAssets.object(at: i)
+        // Process in smaller batches to prevent assetsd connection issues
+        // CRITICAL: Smaller batches prevent memory pressure that causes assetsd crashes
+        let batchSize = 25 // Reduced from 50 to prevent "Connection to assetsd was interrupted"
+        let batches = stride(from: 0, to: totalPhotos, by: batchSize).map { start -> Range<Int> in
+            let end = min(start + batchSize, totalPhotos)
+            return start..<end
+        }
 
-            // Check cache first
-            if let cached = fetchCachedAnalysis(for: asset) {
-                assetsWithVectors.append(cached)
-            } else {
-                // Analyze image with error recovery
-                do {
-                    let analyzed = try await analyzeImage(asset: asset)
-                    assetsWithVectors.append(analyzed)
+        print("📦 [ScanCoordinator] Processing \(totalPhotos) photos in \(batches.count) batches of ~\(batchSize)")
 
-                    // Cache result
-                    cacheAnalysis(analyzed)
-                } catch {
-                    // Log error but continue with next image
-                    failedCount += 1
-                    failedAssets.append((asset, error))
-                    AnalyticsManager.shared.logNonFatalError(
-                        message: "Failed to analyze image",
-                        context: [
-                            "asset_id": asset.localIdentifier,
-                            "error": error.localizedDescription,
-                            "index": i
-                        ]
-                    )
+        for (batchIndex, batchRange) in batches.enumerated() {
+            try Task.checkCancellation()
 
-                    // Continue processing other images
+            // Process batch with limited concurrency to reduce memory pressure
+            // Using smaller concurrent group prevents assetsd from being overwhelmed
+            await withTaskGroup(of: Result<SimilarityService.AssetWithVector?, Error>.self) { group in
+                var batchResults: [Result<SimilarityService.AssetWithVector?, Error>] = []
+
+                // Process in micro-batches for better memory management
+                for i in batchRange {
+                    let asset = imageAssets.object(at: i)
+
+                    group.addTask {
+                        // Check cache first (fast path)
+                        if let cached = await self.fetchCachedAnalysis(for: asset) {
+                            return .success(cached)
+                        }
+
+                        // Analyze image (slow path)
+                        do {
+                            let analyzed = try await self.analyzeImage(asset: asset)
+                            // Cache in background
+                            await self.cacheAnalysis(analyzed)
+                            return .success(analyzed)
+                        } catch {
+                            return .failure(error)
+                        }
+                    }
+                }
+
+                // Collect batch results
+                for await result in group {
+                    batchResults.append(result)
+
+                    switch result {
+                    case .success(let analyzed):
+                        if let analyzed = analyzed {
+                            assetsWithVectors.append(analyzed)
+                        }
+                    case .failure(let error):
+                        failedCount += 1
+                        AnalyticsManager.shared.logNonFatalError(
+                            message: "Failed to analyze image in batch",
+                            context: ["error": error.localizedDescription]
+                        )
+                    }
                 }
             }
 
+            // Update progress after each batch
+            let processedCount = min((batchIndex + 1) * batchSize, totalPhotos)
             updateProgress(
                 step: "Analyzing photos... (\(failedCount) failed)",
-                current: i + 1,
+                current: processedCount,
                 total: totalPhotos
             )
 
-            // Yield periodically
-            if i % 10 == 0 {
-                try Task.checkCancellation()
-                await Task.yield()
+            // Aggressive yielding to prevent memory buildup and assetsd issues
+            await Task.yield()
+
+            // Give assetsd time to recover every 10 batches
+            if batchIndex % 10 == 0 && batchIndex > 0 {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms pause
             }
         }
 
@@ -347,7 +423,8 @@ class ScanCoordinator: ObservableObject {
         try Task.checkCancellation()
 
         // Step 3: Find similar groups with STRICTER threshold for perceptual hash
-        updateProgress(step: "Finding duplicates...", current: 0, total: 100)
+        print("\n📊 STEP 3/9: Finding duplicates...")
+        updateProgress(step: "Finding duplicates... (Step 3/9)", current: 0, total: 1)
 
         // Use much stricter threshold for perceptual hash (8x8 = simple comparison)
         let strictConfig = SimilarityService.Configuration(
@@ -358,7 +435,10 @@ class ScanCoordinator: ObservableObject {
 
         let similarGroups = await similarityService.findSimilarGroups(
             assets: assetsWithVectors,
-            configuration: strictConfig
+            configuration: strictConfig,
+            progressHandler: { [self] current, total in
+                self.updateProgress(step: "Finding duplicates... (Step 3/9)", current: current, total: total)
+            }
         )
 
         // DEBUG: Log similarity results
@@ -370,7 +450,8 @@ class ScanCoordinator: ObservableObject {
         try Task.checkCancellation()
 
         // Step 4: Filter by quality
-        updateProgress(step: "Detecting quality issues...", current: 0, total: 100)
+        print("\n📊 STEP 4/9: Detecting quality issues...")
+        updateProgress(step: "Detecting quality... (Step 4/9)", current: 50, total: 100)
 
         // DEBUG: Log blur score distribution
         print("\n🔍 BLUR SCORE DISTRIBUTION:")
@@ -398,7 +479,8 @@ class ScanCoordinator: ObservableObject {
         try Task.checkCancellation()
 
         // Step 5: Analyze videos
-        updateProgress(step: "Analyzing videos...", current: 0, total: totalVideos)
+        print("\n📊 STEP 5/9: Analyzing videos...")
+        updateProgress(step: "Analyzing videos... (Step 5/9)", current: 0, total: totalVideos)
 
         var videoAssetArray: [PHAsset] = []
         for i in 0..<totalVideos {
@@ -416,7 +498,8 @@ class ScanCoordinator: ObservableObject {
         try Task.checkCancellation()
 
         // Step 5b: Find similar videos
-        updateProgress(step: "Finding similar videos...", current: 0, total: totalVideos)
+        print("\n📊 STEP 6/9: Finding similar videos...")
+        updateProgress(step: "Similar videos... (Step 6/9)", current: 0, total: totalVideos)
 
         let similarVideoGroups = await videoAnalyzer.findSimilarVideos(
             assets: videoAssetArray,
@@ -429,7 +512,8 @@ class ScanCoordinator: ObservableObject {
         try Task.checkCancellation()
 
         // Step 5c: Find optimizable photos (4K → 1080p)
-        updateProgress(step: "Finding optimizable photos...", current: 0, total: totalPhotos)
+        print("\n📊 STEP 7/9: Finding optimizable photos...")
+        updateProgress(step: "Optimizable photos... (Step 7/9)", current: 0, total: totalPhotos)
 
         let imageAssetArray = assetsWithVectors.map { $0.asset }
         let optimizablePhotos = await photoOptimizer.findOptimizablePhotos(
@@ -450,7 +534,8 @@ class ScanCoordinator: ObservableObject {
         try Task.checkCancellation()
 
         // Step 5d: Detect documents (ID cards, invoices, etc.)
-        updateProgress(step: "Detecting documents...", current: 0, total: totalPhotos)
+        print("\n📊 STEP 8/9: Detecting documents...")
+        updateProgress(step: "Detecting documents... (Step 8/9)", current: 0, total: totalPhotos)
 
         let documents = await documentDetector.detectDocuments(
             in: imageAssetArray,
@@ -508,7 +593,8 @@ class ScanCoordinator: ObservableObject {
         try Task.checkCancellation()
 
         // Step 6: Calculate statistics
-        updateProgress(step: "Calculating savings...", current: 99, total: 100)
+        print("\n📊 STEP 9/9: Finalizing results...")
+        updateProgress(step: "Finalizing... (Step 9/9)", current: 99, total: 100)
 
         let statistics = similarityService.calculateStatistics(groups: similarGroups)
 
@@ -699,65 +785,89 @@ class ScanCoordinator: ObservableObject {
 
     // MARK: - Caching
 
-    private func fetchCachedAnalysis(for asset: PHAsset) -> SimilarityService.AssetWithVector? {
-        let context = CoreDataStack.shared.viewContext
-        let fetchRequest: NSFetchRequest<AssetFingerprint> = AssetFingerprint.fetchRequest()
-        fetchRequest.predicate = NSPredicate(format: "assetLocalId == %@", asset.localIdentifier)
-        fetchRequest.fetchLimit = 1
+    private func fetchCachedAnalysis(for asset: PHAsset) async -> SimilarityService.AssetWithVector? {
+        await Task.detached(priority: .userInitiated) {
+            let context = await CoreDataStack.shared.newBackgroundContext()
 
-        guard let cached = try? context.fetch(fetchRequest).first,
-              let vectorData = cached.vectorData else {
-            return nil
-        }
+            return await context.perform {
+                let fetchRequest: NSFetchRequest<AssetFingerprint> = AssetFingerprint.fetchRequest()
+                fetchRequest.predicate = NSPredicate(format: "assetLocalId == %@", asset.localIdentifier)
+                fetchRequest.fetchLimit = 1
 
-        // Use actual stored elementCount, not hardcoded value
-        let elementCount = Int(cached.vectorElementCount)
-        guard elementCount > 0 else {
-            // Invalid cache entry, return nil to force re-analysis
-            return nil
-        }
+                guard let cached = try? context.fetch(fetchRequest).first,
+                      let vectorData = cached.vectorData else {
+                    return nil
+                }
 
-        let vector = FeatureVector(data: vectorData, elementCount: elementCount)
+                // Use actual stored elementCount, not hardcoded value
+                let elementCount = Int(cached.vectorElementCount)
+                guard elementCount > 0 else {
+                    // Invalid cache entry, return nil to force re-analysis
+                    return nil
+                }
 
-        let metadata = SimilarityService.AssetMetadata(
-            blurScore: cached.blurScore,
-            brightnessScore: cached.brightnessScore,
-            isScreenshot: cached.isScreenshot,
-            fileSize: 0
-        )
+                let vector = FeatureVector(data: vectorData, elementCount: elementCount)
 
-        return SimilarityService.AssetWithVector(
-            asset: asset,
-            vector: vector,
-            metadata: metadata
-        )
+                let metadata = SimilarityService.AssetMetadata(
+                    blurScore: cached.blurScore,
+                    brightnessScore: cached.brightnessScore,
+                    isScreenshot: cached.isScreenshot,
+                    fileSize: 0
+                )
+
+                return SimilarityService.AssetWithVector(
+                    asset: asset,
+                    vector: vector,
+                    metadata: metadata
+                )
+            }
+        }.value
     }
 
-    private func cacheAnalysis(_ result: SimilarityService.AssetWithVector) {
-        let context = CoreDataStack.shared.newBackgroundContext()
+    private func cacheAnalysis(_ result: SimilarityService.AssetWithVector) async {
+        await Task.detached(priority: .background) {
+            let context = await CoreDataStack.shared.newBackgroundContext()
 
-        context.perform {
-            let fingerprint = AssetFingerprint(context: context)
-            fingerprint.id = UUID()
-            fingerprint.assetLocalId = result.asset.localIdentifier
-            fingerprint.vectorData = result.vector.data
-            fingerprint.vectorElementCount = Int32(result.vector.elementCount) // Store actual count!
-            fingerprint.blurScore = result.metadata.blurScore
-            fingerprint.brightnessScore = result.metadata.brightnessScore
-            fingerprint.isScreenshot = result.metadata.isScreenshot
-            fingerprint.updatedAt = Date()
+            await context.perform {
+                let fingerprint = AssetFingerprint(context: context)
+                fingerprint.id = UUID()
+                fingerprint.assetLocalId = result.asset.localIdentifier
+                fingerprint.vectorData = result.vector.data
+                fingerprint.vectorElementCount = Int32(result.vector.elementCount) // Store actual count!
+                fingerprint.blurScore = result.metadata.blurScore
+                fingerprint.brightnessScore = result.metadata.brightnessScore
+                fingerprint.isScreenshot = result.metadata.isScreenshot
+                fingerprint.updatedAt = Date()
 
-            CoreDataStack.shared.save(context: context)
-        }
+                CoreDataStack.shared.save(context: context)
+            }
+        }.value
     }
 
     // MARK: - Progress Updates
 
     private func updateProgress(step: String, current: Int, total: Int) {
-        progress.currentStep = step
-        progress.currentItemIndex = current
-        progress.totalItems = total
-        progress.percentage = total > 0 ? Double(current) / Double(total) : 0
+        // Throttle progress updates to avoid UI lag
+        let now = Date()
+        let shouldUpdate = now.timeIntervalSince(lastProgressUpdate) >= progressThrottleInterval
+
+        if shouldUpdate || current == 0 || current == total {
+            lastProgressUpdate = now
+
+            // Set start time on first progress update for this step
+            if progress.currentStep != step || current == 0 {
+                progress.startTime = now
+            }
+
+            progress.currentStep = step
+            progress.currentItemIndex = current
+            progress.totalItems = total
+            progress.percentage = total > 0 ? Double(current) / Double(total) : 0
+            progress.updateTimeRemaining()
+
+            // Persist to state manager (with its own throttling)
+            stateManager.updateProgress(step: step, current: current, total: total)
+        }
     }
 
     // MARK: - Helper Methods

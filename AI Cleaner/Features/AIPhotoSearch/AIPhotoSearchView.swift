@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import Photos
+internal import Photos
 
 struct AIPhotoSearchView: View {
     @StateObject private var viewModel = AIPhotoSearchViewModel()
@@ -30,18 +30,18 @@ struct AIPhotoSearchView: View {
         ("rectangle.portrait.and.arrow.right", "Portrait", "portrait")
     ]
     #else
-    // Full AI-powered suggestions for real device
+    // Full AI-powered suggestions for real device (Turkish + English)
     private let suggestions = [
-        ("magnifyingglass", "Screenshots", "screenshots"),
-        ("fork.knife", "Food & Drinks", "food"),
-        ("figure.walk", "Gym & Fitness", "gym"),
-        ("doc.text", "Documents", "document"),
-        ("airplane", "Travel", "travel"),
-        ("cat", "Pets", "cat dog animal"),
-        ("beach.umbrella", "Beach", "beach"),
-        ("person.2", "People", "person people"),
-        ("building.2", "Buildings", "building architecture"),
-        ("leaf", "Nature", "nature tree plant")
+        ("magnifyingglass", "Ekran Görüntüleri", "screenshot ekran"),
+        ("fork.knife", "Yiyecek & İçecek", "food yemek"),
+        ("figure.walk", "Spor & Fitness", "gym spor fitness"),
+        ("doc.text", "Belgeler", "document belge"),
+        ("airplane", "Seyahat", "travel seyahat"),
+        ("cat", "Evcil Hayvanlar", "pet hayvan kedi köpek"),
+        ("beach.umbrella", "Plaj & Deniz", "beach plaj deniz"),
+        ("person.2", "İnsanlar", "people insan"),
+        ("building.2", "Binalar & Şehir", "building bina şehir"),
+        ("leaf", "Doğa", "nature doğa ağaç")
     ]
     #endif
 
@@ -51,32 +51,38 @@ struct AIPhotoSearchView: View {
                 CleanerTheme.background
                     .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Header
-                        headerSection
-                            .opacity(animateHeader ? 1 : 0)
-                            .offset(y: animateHeader ? 0 : -20)
+                // Show indexing fullscreen if indexing in progress
+                if viewModel.isIndexing || (viewModel.totalPhotos > 0 && viewModel.indexingProgress == 0) {
+                    indexingFullscreenView
+                        .transition(.opacity)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            // Header
+                            headerSection
+                                .opacity(animateHeader ? 1 : 0)
+                                .offset(y: animateHeader ? 0 : -20)
 
-                        // Search Bar
-                        searchBarSection
-                            .opacity(animateSearchBar ? 1 : 0)
-                            .offset(y: animateSearchBar ? 0 : 20)
+                            // Search Bar
+                            searchBarSection
+                                .opacity(animateSearchBar ? 1 : 0)
+                                .offset(y: animateSearchBar ? 0 : 20)
 
-                        // Content
-                        if viewModel.isSearching {
-                            searchingView
-                        } else if !viewModel.searchResults.isEmpty {
-                            searchResultsSection
-                        } else if searchText.isEmpty {
-                            suggestionsSection
-                        } else if viewModel.hasSearched {
-                            noResultsView
+                            // Content
+                            if viewModel.isSearching {
+                                searchingView
+                            } else if !viewModel.searchResults.isEmpty {
+                                searchResultsSection
+                            } else if searchText.isEmpty {
+                                suggestionsSection
+                            } else if viewModel.hasSearched {
+                                noResultsView
+                            }
+
+                            Spacer(minLength: 100)
                         }
-
-                        Spacer(minLength: 100)
+                        .padding()
                     }
-                    .padding()
                 }
             }
             .navigationTitle("")
@@ -165,7 +171,7 @@ struct AIPhotoSearchView: View {
                 .font(.system(size: 18))
                 .foregroundColor(CleanerTheme.textSecondary)
 
-            TextField("Try 'photos at the gym' or 'screenshots'", text: $searchText)
+            TextField("Try 'spor', 'plaj', 'gym' or 'yemek'...", text: $searchText)
                 .font(.system(size: 16))
                 .foregroundColor(CleanerTheme.textPrimary)
                 .submitLabel(.search)
@@ -245,6 +251,103 @@ struct AIPhotoSearchView: View {
 
             PhotoGridView(assets: viewModel.searchResults)
         }
+    }
+
+    // MARK: - Indexing Fullscreen
+
+    private var indexingFullscreenView: some View {
+        VStack(spacing: 32) {
+            Spacer()
+
+            // Animated Icon
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [CleanerTheme.primary.opacity(0.3), CleanerTheme.primary.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 120, height: 120)
+
+                Image(systemName: "sparkles.rectangle.stack.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(CleanerTheme.primary)
+                    .symbolEffect(.pulse, options: .repeating)
+            }
+
+            VStack(spacing: 12) {
+                Text("Indexing Your Photos")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(CleanerTheme.textPrimary)
+
+                Text("AI is analyzing your photos for smart search")
+                    .font(.system(size: 15))
+                    .foregroundColor(CleanerTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+
+            // Progress
+            VStack(spacing: 16) {
+                ZStack {
+                    // Background circle
+                    Circle()
+                        .stroke(CleanerTheme.surface, lineWidth: 8)
+                        .frame(width: 100, height: 100)
+
+                    // Progress circle
+                    Circle()
+                        .trim(from: 0, to: viewModel.indexingProgressPercentage)
+                        .stroke(
+                            LinearGradient(
+                                colors: [CleanerTheme.primary, CleanerTheme.accent],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                        )
+                        .frame(width: 100, height: 100)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeOut(duration: 0.5), value: viewModel.indexingProgressPercentage)
+
+                    // Percentage
+                    VStack(spacing: 2) {
+                        Text("\(Int(viewModel.indexingProgressPercentage * 100))%")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(CleanerTheme.textPrimary)
+                    }
+                }
+
+                Text("\(viewModel.indexingProgress) / \(viewModel.totalPhotos) photos")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(CleanerTheme.textSecondary)
+            }
+
+            Spacer()
+
+            // Info
+            VStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundColor(CleanerTheme.primary)
+                    Text("This may take a few minutes for large libraries")
+                        .font(.system(size: 13))
+                        .foregroundColor(CleanerTheme.textSecondary)
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.shield.fill")
+                        .foregroundColor(CleanerTheme.accentGreen)
+                    Text("All processing happens on your device")
+                        .font(.system(size: 13))
+                        .foregroundColor(CleanerTheme.textSecondary)
+                }
+            }
+            .padding(.bottom, 32)
+        }
+        .padding()
     }
 
     // MARK: - States

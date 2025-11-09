@@ -90,21 +90,21 @@ struct WelcomePageView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                FeatureRow(
+                OnboardingFeatureRow(
                     icon: "rectangle.on.rectangle.angled",
                     title: "Find Duplicates",
                     description: "Automatically detect similar photos",
                     color: CleanerTheme.primary
                 )
 
-                FeatureRow(
+                OnboardingFeatureRow(
                     icon: "eye.slash",
                     title: "Detect Blurry Photos",
                     description: "Identify low-quality images",
                     color: CleanerTheme.accentGreen
                 )
 
-                FeatureRow(
+                OnboardingFeatureRow(
                     icon: "camera.viewfinder",
                     title: "Find Screenshots",
                     description: "Organize and clean up screenshots",
@@ -251,22 +251,22 @@ struct PermissionPageView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                InfoRow(
+                OnboardingInfoRow(
                     icon: "checkmark.circle.fill",
                     text: "Scan for duplicates and similar photos"
                 )
 
-                InfoRow(
+                OnboardingInfoRow(
                     icon: "checkmark.circle.fill",
                     text: "Detect blurry and low-quality images"
                 )
 
-                InfoRow(
+                OnboardingInfoRow(
                     icon: "checkmark.circle.fill",
                     text: "Find screenshots and large videos"
                 )
 
-                InfoRow(
+                OnboardingInfoRow(
                     icon: "checkmark.circle.fill",
                     text: "Safely delete unwanted photos"
                 )
@@ -327,7 +327,7 @@ struct PermissionPageView: View {
 
 // MARK: - Helper Views (Dark Theme)
 
-struct FeatureRow: View {
+struct OnboardingFeatureRow: View {
     let icon: String
     let title: String
     let description: String
@@ -392,7 +392,7 @@ struct PrivacyFeatureRow: View {
     }
 }
 
-struct InfoRow: View {
+struct OnboardingInfoRow: View {
     let icon: String
     let text: String
 

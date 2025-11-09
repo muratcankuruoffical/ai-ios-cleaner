@@ -10,6 +10,7 @@ import Charts
 import CoreData
 internal import EventKit
 internal import Combine
+internal import Photos
 
 struct DashboardView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -44,8 +45,11 @@ struct DashboardView: View {
                         storageDonutCard(scanCoordinator.scanResults)
                             .transition(.scale.combined(with: .opacity))
 
-                        // Scan Button or Results
-                        if let results = scanCoordinator.scanResults {
+                        // Scan Button or Results or Ongoing Scan
+                        if scanCoordinator.scanState == .scanning {
+                            ongoingScanCard
+                                .transition(.scale.combined(with: .opacity))
+                        } else if let results = scanCoordinator.scanResults {
                             resultsCard(results)
                                 .transition(.scale.combined(with: .opacity))
                         } else {
@@ -154,6 +158,14 @@ struct DashboardView: View {
             withAnimation(.easeOut(duration: 0.6)) {
                 animateContent = true
             }
+
+            // Restore scan if it was running
+            scanCoordinator.restoreScanIfNeeded()
+
+            // Show scan progress if scan is in progress
+            if scanCoordinator.scanState == .scanning {
+                showingScanProgress = true
+            }
         }
     }
 
@@ -164,7 +176,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Hello!")
                     .cleanerFont(.title)
-                Text("Keep your photos organized")
+                Text("Clean, organize & optimize your iPhone storage")
                     .cleanerFont(.label)
             }
 
@@ -275,6 +287,73 @@ struct DashboardView: View {
         .card(backgroundColor: CleanerTheme.surface)
     }
 
+    // MARK: - Ongoing Scan Card
+
+    private var ongoingScanCard: some View {
+        VStack(spacing: 20) {
+            // Animated scanning indicator
+            ZStack {
+                Circle()
+                    .stroke(CleanerTheme.surface, lineWidth: 8)
+                    .frame(width: 80, height: 80)
+
+                Circle()
+                    .trim(from: 0, to: scanCoordinator.progress.percentage)
+                    .stroke(
+                        LinearGradient(
+                            colors: [CleanerTheme.primary, CleanerTheme.accent],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                    )
+                    .frame(width: 80, height: 80)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeInOut, value: scanCoordinator.progress.percentage)
+
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 32))
+                    .foregroundColor(CleanerTheme.primary)
+            }
+
+            VStack(spacing: 8) {
+                Text("Scan in Progress")
+                    .cleanerFont(.title)
+
+                Text(scanCoordinator.progress.currentStep)
+                    .cleanerFont(.body)
+                    .foregroundColor(CleanerTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+
+                if scanCoordinator.progress.percentage > 0 {
+                    Text(String(format: "%.0f%% Complete", scanCoordinator.progress.percentage * 100))
+                        .cleanerFont(.caption)
+                        .foregroundColor(CleanerTheme.primary)
+                }
+            }
+
+            Button(action: {
+                showingScanProgress = true
+            }) {
+                Text("View Progress")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [CleanerTheme.primary, Color(hex: "#0066DD")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(16)
+            }
+        }
+        .padding(24)
+        .card(backgroundColor: CleanerTheme.surface)
+    }
+
     // MARK: - Scan Prompt Card
 
     private var scanPromptCard: some View {
@@ -294,7 +373,9 @@ struct DashboardView: View {
             }
 
             Button(action: {
+                // Start scan with performance optimizations enabled
                 scanCoordinator.startScan()
+                showingScanProgress = true
             }) {
                 Text("Start Scan")
                     .font(.system(size: 18, weight: .semibold))
@@ -309,6 +390,14 @@ struct DashboardView: View {
                         )
                     )
                     .cornerRadius(16)
+            }
+
+            // Performance info for large libraries
+            if PhotoLibraryService.shared.fetchAllImages().count > 3000 {
+                Text("⚡️ Smart Scan optimized for large libraries")
+                    .font(.system(size: 12))
+                    .foregroundColor(CleanerTheme.textSecondary)
+                    .padding(.top, 4)
             }
         }
         .padding(24)

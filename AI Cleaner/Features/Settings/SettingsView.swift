@@ -61,11 +61,11 @@ struct SettingsView: View {
 
             // General Section
             Section("General") {
-                NavigationLink(destination: Text("About")) {
+                NavigationLink(destination: AboutView()) {
                     Label("About", systemImage: "info.circle")
                 }
 
-                NavigationLink(destination: Text("Privacy Policy")) {
+                NavigationLink(destination: PrivacyView()) {
                     Label("Privacy Policy", systemImage: "hand.raised")
                 }
 
